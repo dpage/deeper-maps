@@ -5,7 +5,10 @@ import type { ScaleRange } from '../types';
  *
  * - Sorts ascending, drops `trimPct` of values from each end, returns min/max
  *   of the remainder.
- * - If trimming leaves <2 values, returns the literal min/max of the input.
+ * - If trimming leaves exactly 1 value, returns the literal min/max of the
+ *   input (preserves spread for the colour scale).
+ * - If trimming wipes the window entirely, collapses both endpoints to the
+ *   median of the input.
  * - Always guarantees `max - min >= 1e-6` so MapLibre data expressions can
  *   safely divide. See spec §6.5.
  */
@@ -23,9 +26,10 @@ export function trimmedRange(values: readonly number[], trimPct: number): ScaleR
     min = window[0]!;
     max = window[window.length - 1]!;
   } else if (window.length === 1) {
-    // Trimming left a single value — use it as both endpoints (degenerate).
-    min = window[0]!;
-    max = window[0]!;
+    // Trimming left a single value — fall back to the literal min/max of the
+    // input, preserving the spread so colour-scale endpoints stay meaningful.
+    min = sorted[0]!;
+    max = sorted[sorted.length - 1]!;
   } else {
     // Trimming wiped the window — collapse to the median (degenerate).
     const mid = sorted[sorted.length >> 1]!;

@@ -13,7 +13,9 @@ export interface ScanContentInput {
  * folder/zip/individual-file uploads of the same payload. See spec §7.4.
  */
 export async function scanContentHash(files: ScanContentInput[]): Promise<string> {
-  const sorted = [...files].sort((a, b) => (a.fileName < b.fileName ? -1 : 1));
+  const sorted = [...files].sort((a, b) =>
+    a.fileName < b.fileName ? -1 : a.fileName > b.fileName ? 1 : 0,
+  );
   const lines: string[] = [];
   for (const f of sorted) {
     lines.push(`${f.fileName}:${await sha256Hex(f.bytes)}\n`);

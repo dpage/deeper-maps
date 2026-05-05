@@ -44,4 +44,20 @@ describe('scanContentHash', () => {
     const h2 = await scanContentHash([{ fileName: 'b.csv', bytes: a }]);
     expect(h1).not.toBe(h2);
   });
+
+  it('handles entries with identical filenames (equal-comparator branch)', async () => {
+    // Two entries with the same fileName exercises the equal branch of the
+    // 3-way comparator. The hash should be deterministic across runs.
+    const a = new TextEncoder().encode('alpha');
+    const b = new TextEncoder().encode('beta');
+    const h1 = await scanContentHash([
+      { fileName: 'dup.csv', bytes: a },
+      { fileName: 'dup.csv', bytes: b },
+    ]);
+    const h2 = await scanContentHash([
+      { fileName: 'dup.csv', bytes: a },
+      { fileName: 'dup.csv', bytes: b },
+    ]);
+    expect(h1).toBe(h2);
+  });
 });

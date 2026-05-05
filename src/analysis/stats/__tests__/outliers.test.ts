@@ -4,26 +4,36 @@ import { detectLiftouts, mad, rollingMedian } from '../outliers';
 
 describe('rollingMedian', () => {
   it('returns the centred median over a window', () => {
-    const m = rollingMedian([1, 2, 3, 4, 5, 6, 7], 3);
+    // window=3, minPeriods=3: full window required, so edges (length-2 slices)
+    // return the input value unchanged.
+    const m = rollingMedian([1, 2, 3, 4, 5, 6, 7], 3, 3);
     expect(m).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
   it('handles odd-length window with edge fill', () => {
-    const m = rollingMedian([10, 1, 2, 1, 10], 3);
-    expect(m[0]).toBe(10);
+    const m = rollingMedian([10, 1, 2, 1, 10], 3, 2);
+    expect(m[0]).toBe(5.5);
     expect(m[1]).toBe(2);
     expect(m[2]).toBe(1);
     expect(m[3]).toBe(2);
-    expect(m[4]).toBe(10);
+    expect(m[4]).toBe(5.5);
   });
 
-  it('uses min_periods of ceil(window/2) at edges', () => {
-    const m = rollingMedian([5, 5, 5, 100], 5);
-    expect(m[3]).toBe(5);
+  it('respects minPeriods at edges (returns input value when window has too few values)', () => {
+    // window=5, minPeriods=4: at index 0 we have a 3-element slice (length 3 < 4),
+    // so we return the input value 100 unchanged. At index 4 the slice is 3 again.
+    // At indices 1, 2, 3 the slices are 4, 5, 4 respectively (all >=4) so the
+    // median is computed.
+    const m = rollingMedian([100, 1, 2, 1, 100], 5, 4);
+    expect(m[0]).toBe(100);
+    expect(m[4]).toBe(100);
+    expect(m[1]).toBe(1.5); // median of [100,1,2,1] = (1+2)/2
+    expect(m[2]).toBe(2); // median of [100,1,2,1,100]
+    expect(m[3]).toBe(1.5); // median of [1,2,1,100]
   });
 
   it('throws when window is even', () => {
-    expect(() => rollingMedian([1, 2, 3], 2)).toThrow(/odd/);
+    expect(() => rollingMedian([1, 2, 3], 2, 1)).toThrow(/odd/);
   });
 });
 
@@ -115,6 +125,28 @@ describe('detectLiftouts', () => {
     });
     // Spike sits inside the second session, not the first.
     expect(flags[45]).toBe(true);
+  });
+
+  it('flags rolling outliers in sessions of length 5..15 (matches Python)', () => {
+    // 12-row session, depth ~1.5 throughout, with a single outlier at index 6.
+    // Python's rolling(31, center=True, min_periods=5) computes a median for
+    // every index (because length=12 >= 5), so the outlier at i=6 is flagged.
+    const rows = makeBath({
+      n: 12,
+      mutator: (r, i) => {
+        if (i === 6) r.depth_m = 4.0;
+      },
+    });
+    const flags = detectLiftouts(rows, {
+      hardThresholdM: 5,
+      rollingWindow: 31,
+      madMultiplier: 6,
+      madOffsetM: 0.3,
+      sessionGapS: 300,
+    });
+    expect(flags[6]).toBe(true);
+    // Other rows in the session should not be flagged.
+    expect(flags.filter(Boolean)).toHaveLength(1);
   });
 
   it('skips rolling-median pass for sessions shorter than 5 rows', () => {

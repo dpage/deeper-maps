@@ -35,4 +35,12 @@ describe('trimmedRange', () => {
     const high = trimmedRange(values, 100);
     expect(high.min).toBeCloseTo(high.max, 5); // everything trimmed → degenerate
   });
+
+  it('returns the literal min/max when trimming leaves a single value', () => {
+    // 3 values, trim 33% → ceil(3*33/100)=1 trim from each end → window length 1.
+    // The < 2 fallback uses the literal sorted min/max.
+    const r = trimmedRange([1, 5, 10], 33);
+    expect(r.min).toBe(1);
+    expect(r.max).toBe(10);
+  });
 });

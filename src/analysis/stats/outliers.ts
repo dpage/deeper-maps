@@ -1,6 +1,9 @@
 import type { BathRow } from '../parsers/types';
 import type { LiftoutOptions } from '../types';
 
+// Matches deeper_analysis.py:flag_liftouts (line 124)
+const ROLLING_MIN_PERIODS = 5;
+
 function median(sortedAsc: number[]): number {
   const n = sortedAsc.length;
   if (n === 0) return NaN;
@@ -12,18 +15,22 @@ function median(sortedAsc: number[]): number {
  * Centred rolling median.
  *
  * - Window must be odd.
- * - At the edges, falls back to the available window down to a minimum of
- *   max(3, ceil(window/2)) values; if even fewer are available, returns the
- *   input value for that index.
- * - Matches the centre-aligned behaviour we need to port from
- *   `pd.Series.rolling(W, center=True, min_periods=...).median()` in
- *   `deeper_analysis.py:flag_liftouts`. Floor of 3 keeps tiny-window cases
- *   (W=3 with len=2 slices) from collapsing to a 2-sample average.
+ * - `minPeriods` is the number of values that must be available in the
+ *   centred windowed slice for a median to be computed. If fewer values
+ *   are available at a given index (typically near the edges of `values`),
+ *   the input value at that index is returned unchanged.
+ * - Matches the centre-aligned behaviour of
+ *   `pd.Series.rolling(W, center=True, min_periods=N).median()`. Production
+ *   callers pass `minPeriods=5` to match `deeper_analysis.py:flag_liftouts`
+ *   (line 124).
  */
-export function rollingMedian(values: readonly number[], window: number): number[] {
+export function rollingMedian(
+  values: readonly number[],
+  window: number,
+  minPeriods: number,
+): number[] {
   if (window % 2 === 0) throw new Error('rollingMedian: window must be odd');
   const half = (window - 1) / 2;
-  const minPeriods = Math.max(3, Math.ceil(window / 2));
   const out: number[] = new Array<number>(values.length);
   for (let i = 0; i < values.length; i++) {
     const lo = Math.max(0, i - half);
@@ -83,9 +90,9 @@ export function detectLiftouts(rows: readonly BathRow[], opts: LiftoutOptions): 
     const hi = sessionStarts[s + 1]!;
     const depths = rows.slice(lo, hi).map((r) => r.depth_m);
     if (depths.length < 5) continue;
-    const med = rollingMedian(depths, opts.rollingWindow);
+    const med = rollingMedian(depths, opts.rollingWindow, ROLLING_MIN_PERIODS);
     const dev = depths.map((d, i) => Math.abs(d - med[i]!));
-    const rollingMad = rollingMedian(dev, opts.rollingWindow);
+    const rollingMad = rollingMedian(dev, opts.rollingWindow, ROLLING_MIN_PERIODS);
     for (let i = 0; i < depths.length; i++) {
       const threshold = rollingMad[i]! * opts.madMultiplier + opts.madOffsetM;
       if (dev[i]! > threshold) flags[lo + i] = true;
