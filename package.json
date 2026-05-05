@@ -23,11 +23,23 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.1",
+    "@mui/icons-material": "6.5.0",
+    "@mui/material": "6.5.0",
+    "d3-contour": "4.0.2",
+    "fflate": "0.8.2",
+    "idb": "8.0.3",
+    "maplibre-gl": "4.7.1",
+    "papaparse": "5.5.3",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "zustand": "5.0.13"
   },
   "devDependencies": {
+    "@types/d3-contour": "3.0.6",
     "@types/node": "20.19.39",
+    "@types/papaparse": "5.5.2",
     "@types/react": "18.3.28",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "4.7.0",
