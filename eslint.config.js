@@ -7,10 +7,14 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default [
-  { ignores: ['dist/**', 'coverage/**', 'node_modules/**', '**/*.cjs', 'eslint.config.js'] },
+  { ignores: ['dist/**', 'coverage/**', 'node_modules/**', '**/*.cjs'] },
   js.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.recommendedTypeChecked.map((cfg) => ({
+    ...cfg,
+    files: ['**/*.ts', '**/*.tsx'],
+  })),
   {
+    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parserOptions: { project: ['./tsconfig.app.json', './tsconfig.node.json'] },
       globals: { ...globals.browser, ...globals.node },

@@ -6,10 +6,6 @@ export default defineConfig({
   plugins: [react(), viteSingleFile()],
   build: {
     target: 'es2022',
-    cssCodeSplit: false,
-    assetsInlineLimit: 100_000_000,
-    chunkSizeWarningLimit: 5000,
-    rollupOptions: { output: { inlineDynamicImports: true } },
   },
   worker: {
     format: 'es',
