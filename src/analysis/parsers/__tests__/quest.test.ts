@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseQuestBathymetry, type ParseDiagnostics } from '../quest';
+import { parseQuestBathymetry, parseQuestSonar, type ParseDiagnostics } from '../quest';
 
 const FIVE_COL = `51.7,-1.43,1.5,18.4,1717000000000
 51.7,-1.43,1.6,18.4,1717000000067
@@ -71,5 +71,46 @@ malformed_row_here
     const stub = `0,0,0,0`;
     const diagnostics: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
     expect(() => parseQuestBathymetry(stub, diagnostics)).toThrow(/stub file/i);
+  });
+});
+
+describe('parseQuestSonar', () => {
+  it('parses ts + variable-length amplitude rows', () => {
+    const csv = `1717000000000,0,0,5,12,40,200,500
+1717000000067,0,0,4,11,38,210,520,180
+`;
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const pings = parseQuestSonar(csv, diag);
+    expect(pings).toHaveLength(2);
+    expect(pings[0]?.ts_ms).toBe(1717000000000);
+    expect(pings[0]?.amps).toBeInstanceOf(Int32Array);
+    expect(Array.from(pings[0]!.amps)).toEqual([0, 0, 5, 12, 40, 200, 500]);
+    expect(pings[1]?.amps.length).toBe(8);
+  });
+
+  it('skips a row with a non-integer amplitude', () => {
+    const csv = `1717000000000,0,0,5,12,foo,200,500
+1717000000067,0,0,4,11,38,210,520,180
+1717000000134,0,0,4,11,38,210,520,180
+1717000000201,0,0,4,11,38,210,520,180
+1717000000268,0,0,4,11,38,210,520,180
+`;
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const pings = parseQuestSonar(csv, diag);
+    expect(pings).toHaveLength(4);
+    expect(diag.malformedRowCount).toBe(1);
+  });
+
+  it('fails when malformed rows exceed 1%', () => {
+    const lines: string[] = [];
+    lines.push('1717000000000,0,0,5,12,40,200,500');
+    for (let i = 0; i < 200; i++) lines.push('garbage');
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    expect(() => parseQuestSonar(lines.join('\n'), diag)).toThrow(/malformed rows exceed/i);
+  });
+
+  it('detects a stub file', () => {
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    expect(() => parseQuestSonar('1,2,3', diag)).toThrow(/stub file/i);
   });
 });

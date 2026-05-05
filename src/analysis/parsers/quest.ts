@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import type { BathRow } from './types';
+import type { BathRow, SonarPing } from './types';
 
 export interface ParseDiagnostics {
   malformedRowCount: number;
@@ -86,5 +86,56 @@ export function parseQuestBathymetry(text: string, diagnostics: ParseDiagnostics
     );
   }
 
+  return out;
+}
+
+export function parseQuestSonar(text: string, diagnostics: ParseDiagnostics): SonarPing[] {
+  if (isStubFile(text)) {
+    throw new Error(`Stub file detected (length=${text.length} bytes). Skip and don't import.`);
+  }
+
+  const parsed = Papa.parse<string[]>(text.trim(), { skipEmptyLines: true });
+  const rawRows = parsed.data;
+  if (rawRows.length === 0) throw new Error('parseQuestSonar: no rows found');
+
+  diagnostics.totalRows = rawRows.length;
+  const out: SonarPing[] = [];
+  for (let i = 0; i < rawRows.length; i++) {
+    const cols = rawRows[i]!;
+    if (cols.length < 2) {
+      diagnostics.malformedRowCount++;
+      continue;
+    }
+    const ts = Number(cols[0]);
+    if (!Number.isFinite(ts)) {
+      diagnostics.malformedRowCount++;
+      continue;
+    }
+    const amps = new Int32Array(cols.length - 1);
+    let badAmp = false;
+    for (let j = 1; j < cols.length; j++) {
+      const v = Number(cols[j]);
+      if (!Number.isInteger(v)) {
+        badAmp = true;
+        break;
+      }
+      amps[j - 1] = v;
+    }
+    if (badAmp) {
+      diagnostics.malformedRowCount++;
+      continue;
+    }
+    out.push({ ts_ms: ts, amps });
+  }
+
+  if (
+    diagnostics.totalRows >= MALFORMED_THRESHOLD_MIN_ROWS &&
+    diagnostics.malformedRowCount / diagnostics.totalRows > MAX_MALFORMED_FRACTION
+  ) {
+    throw new Error(
+      `parseQuestSonar: malformed rows exceed ${(MAX_MALFORMED_FRACTION * 100).toFixed(0)}% ` +
+        `(${diagnostics.malformedRowCount} of ${diagnostics.totalRows}).`,
+    );
+  }
   return out;
 }
