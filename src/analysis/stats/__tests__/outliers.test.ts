@@ -35,6 +35,10 @@ describe('mad', () => {
   it('is the median of absolute deviations from the median', () => {
     expect(mad([1, 2, 3, 4, 5])).toBe(1);
   });
+
+  it('returns 0 for empty input', () => {
+    expect(mad([])).toBe(0);
+  });
 });
 
 describe('detectLiftouts', () => {
@@ -81,6 +85,42 @@ describe('detectLiftouts', () => {
         r.depth_m = 1.5 + (i % 5) * 0.05; // 1.5..1.7 oscillation
       },
     });
+    const flags = detectLiftouts(rows, {
+      hardThresholdM: 5,
+      rollingWindow: 31,
+      madMultiplier: 6,
+      madOffsetM: 0.3,
+      sessionGapS: 300,
+    });
+    expect(flags.filter(Boolean)).toHaveLength(0);
+  });
+
+  it('splits sessions on ts_ms gaps > sessionGapS', () => {
+    // Two large sessions separated by a 600 s gap; spike in the second is
+    // detected by its session-local rolling median (which is independent of
+    // the first session's depths).
+    const rows = makeBath({
+      n: 60,
+      mutator: (r, i) => {
+        if (i >= 30) r.ts_ms += 600_000; // 600 s gap before row 30
+        if (i === 45) r.depth_m = 4;
+      },
+    });
+    const flags = detectLiftouts(rows, {
+      hardThresholdM: 5,
+      rollingWindow: 31,
+      madMultiplier: 6,
+      madOffsetM: 0.3,
+      sessionGapS: 300,
+    });
+    // Spike sits inside the second session, not the first.
+    expect(flags[45]).toBe(true);
+  });
+
+  it('skips rolling-median pass for sessions shorter than 5 rows', () => {
+    // 4 rows is below the per-session minimum length; only the hard threshold
+    // applies, so nothing here gets flagged.
+    const rows = makeBath({ n: 4 });
     const flags = detectLiftouts(rows, {
       hardThresholdM: 5,
       rollingWindow: 31,

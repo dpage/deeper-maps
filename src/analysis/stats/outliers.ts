@@ -24,7 +24,7 @@ export function rollingMedian(values: readonly number[], window: number): number
   if (window % 2 === 0) throw new Error('rollingMedian: window must be odd');
   const half = (window - 1) / 2;
   const minPeriods = Math.max(3, Math.ceil(window / 2));
-  const out: number[] = new Array(values.length);
+  const out: number[] = new Array<number>(values.length);
   for (let i = 0; i < values.length; i++) {
     const lo = Math.max(0, i - half);
     const hi = Math.min(values.length - 1, i + half);
@@ -62,7 +62,7 @@ export function mad(values: readonly number[]): number {
  */
 export function detectLiftouts(rows: readonly BathRow[], opts: LiftoutOptions): boolean[] {
   const n = rows.length;
-  const flags: boolean[] = new Array(n).fill(false);
+  const flags: boolean[] = new Array<boolean>(n).fill(false);
 
   // Hard threshold first.
   for (let i = 0; i < n; i++) {
