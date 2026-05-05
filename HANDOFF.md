@@ -28,12 +28,12 @@ effectively.
 
 A "scan" exported from the Deeper app is a folder containing several CSVs:
 
-| File | Contents | Notes |
-|------|----------|-------|
-| `bathymetry.csv` | `lat,lon,depth_m,temp_c,ts_ms` per ping | New 5-column format (post-2025 firmware). Older units output 4 columns without `temp_c`. |
-| `sonar.csv` | `ts_ms, amp_0, amp_1, ..., amp_n` per ping | Variable column count per row — depends on water depth. |
-| `depth_map_data.csv` | Identical to `bathymetry.csv` | Duplicate export, can be ignored. |
-| `README` | Plain text explainer | Documents older models accurately but Quest details differ — see "Empirical findings" below. |
+| File                 | Contents                                   | Notes                                                                                        |
+| -------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `bathymetry.csv`     | `lat,lon,depth_m,temp_c,ts_ms` per ping    | New 5-column format (post-2025 firmware). Older units output 4 columns without `temp_c`.     |
+| `sonar.csv`          | `ts_ms, amp_0, amp_1, ..., amp_n` per ping | Variable column count per row — depends on water depth.                                      |
+| `depth_map_data.csv` | Identical to `bathymetry.csv`              | Duplicate export, can be ignored.                                                            |
+| `README`             | Plain text explainer                       | Documents older models accurately but Quest details differ — see "Empirical findings" below. |
 
 A single user fishing trip can generate multiple scan folders (the Deeper app's
 "stop scan" UI is unreliable and tends to start fresh scan files at unpredictable
@@ -107,11 +107,13 @@ following observations emerged that drive detection logic:
 The pipeline produces three outputs that drive the visualisation:
 
 ### 1. Cleaned bathymetry (per ping)
+
 After deduplication, lift-out filtering, and GPS interpolation, this is a
 table of `(ts_ms, lat, lon, depth_m, temp_c, session_id)` for every usable
 ping. Use this for the boat-track layer and depth map.
 
 ### 2. Per-ping analysis
+
 For each ping, run `analyse_ping(amplitudes, depth)` to compute:
 
 - `weed_height_m` — height of weed/silt band above the hard bottom
@@ -122,6 +124,7 @@ For each ping, run `analyse_ping(amplitudes, depth)` to compute:
 - `noise_floor` — mid-water-column amplitude baseline (per-ping noise level)
 
 ### 3. Cell aggregation
+
 Project `lat`/`lon` to local metres, bucket into a 2 m × 2 m grid, aggregate
 per cell:
 
@@ -132,19 +135,20 @@ per cell:
 
 Then categorise each cell:
 
-| Category | Criteria | UI colour |
-|----------|----------|-----------|
-| **Gold** | fish_rate ≥ 0.10 AND mean_weed ≤ 0.05 m | gold |
-| **Silver** | fish_rate ≥ 0.10 AND 0.05 < mean_weed ≤ 0.15 m | green |
-| **Bronze** | 0.05 ≤ fish_rate < 0.10 AND mean_weed ≤ 0.15 m | blue |
-| **Weeded** | fish_rate ≥ 0.10 AND mean_weed > 0.15 m | orange |
-| **None** | otherwise | grey |
+| Category   | Criteria                                       | UI colour |
+| ---------- | ---------------------------------------------- | --------- |
+| **Gold**   | fish_rate ≥ 0.10 AND mean_weed ≤ 0.05 m        | gold      |
+| **Silver** | fish_rate ≥ 0.10 AND 0.05 < mean_weed ≤ 0.15 m | green     |
+| **Bronze** | 0.05 ≤ fish_rate < 0.10 AND mean_weed ≤ 0.15 m | blue      |
+| **Weeded** | fish_rate ≥ 0.10 AND mean_weed > 0.15 m        | orange    |
+| **None**   | otherwise                                      | grey      |
 
 These thresholds are starting points and should be configurable in the UI.
 The user may want to tune them for different waters or different fishing
 strategies.
 
 ### Lift-out detection in detail
+
 A two-stage filter:
 
 1. **Hard threshold** — any ping with `depth_m > 5.0` is treated as a lift-out.
@@ -161,6 +165,7 @@ Sessions are defined as ping-groups separated by gaps of >5 minutes.
 ## Suggested architecture
 
 ### Backend (Python)
+
 - **FastAPI** for the HTTP layer
 - **`deeper_analysis.py`** (provided) for the core analysis
 - **PostgreSQL + PostGIS** for persistence (Dave works at pgEdge — PostGIS is
