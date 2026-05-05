@@ -1,0 +1,25 @@
+{
+  "name": "deeper-maps",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Client-side web app for visualising Deeper sonar scan data",
+  "author": "Dave Page",
+  "license": "PostgreSQL",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  }
+}

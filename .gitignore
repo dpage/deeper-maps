@@ -1,0 +1,20 @@
+# Claude planning artifacts (per global user policy — never commit)
+.claude/plans/
+.claude/specs/
+
+# Personal scan data (developer-local fixtures, not for public commit)
+sample-scans/
+
+# Common
+.DS_Store
+
+# Node
+node_modules/
+dist/
+coverage/
+*.log
+.vite/
+
+# Editor
+.vscode/
+.idea/
