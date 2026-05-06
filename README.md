@@ -6,15 +6,19 @@ Open `index.html` in a browser to use it. No installation, no server, no account
 
 ## Status
 
-**Plan 1 complete.** The project foundation is in place and the analysis pipeline has been ported from the Python reference (`deeper_analysis.py`) to TypeScript with full unit test coverage and a Python-equivalence snapshot. The UI shell is currently a placeholder; map rendering, IndexedDB persistence, and the React UI ship in Plans 2 and 3.
+**Plan 2 complete.** Storage, worker, state, and map rendering are all in place. A developer harness page at `npm run dev` exercises the full data flow: pick a Quest zip, watch the staged pipeline run in a Web Worker, see the four data layers render on a MapLibre map. Plan 3 swaps the harness for the real MUI UI (scan library sidebar, threshold sliders, legend, progress banner) and adds the Playwright E2E suite.
 
 What works today:
 
 - Quest scan parser: handles 4-column and 5-column bathymetry CSVs, variable-width sonar amplitude rows, zip uploads (with macOS resource-fork and `__MACOSX/` filtering), folder uploads, and degraded mode when `sonar.csv` is missing.
 - Full analysis pipeline: lift-out detection (rolling-median + MAD), GPS interpolation, per-ping sonar analysis (weed band, fish clusters, bottom hardness, noise floor), 2 m × 2 m cell aggregation, sweet-spot categorisation (Gold/Silver/Bronze/Weeded/None).
 - Outlier-trimmed colour-scale endpoints for layers (data-relative, not hardcoded).
+- IndexedDB-backed scans library: scans persist across sessions; cached `LayerBundle` results re-load instantly.
+- Web Worker hosting the pipeline with memoised stages, progress reporting, and proper cancellation (distinguishes user cancellation from crashes via a dedicated `kind: 'cancelled'` response).
+- Zustand store mediating between IndexedDB, the worker, and the UI. 200 ms threshold debounce.
+- MapLibre map with four toggleable layers (filled bathymetry contours, weed, fish-density circles, sweet-spot markers) over OSM or Esri satellite, no API keys needed. IDW grid resampling + d3-contour for the filled layers.
+- Single-file production build via `vite-plugin-singlefile` (currently ~1.1 MB, ~306 KB gzipped).
 - Node CLI for batch analysis: `npm run analyse -- <path-to-scan.zip>`.
-- Single-file production build via `vite-plugin-singlefile`.
 
 ## Develop
 
@@ -35,21 +39,28 @@ CI runs typecheck, lint, format check, the full test suite, and the build on eve
 
 ## Architecture
 
-The repository follows the structure described in the design spec (`.claude/specs/2026-05-05-deeper-maps-design.md`). Plan 1 implements:
+The repository follows the structure described in the design spec (`.claude/specs/2026-05-05-deeper-maps-design.md`).
 
 ```
 src/analysis/        Pure-functional pipeline. No React, no DOM, no MapLibre, no storage.
   parsers/           Quest CSV parsers + zip dispatch (extension point for other devices)
   pipeline/          Six staged pure functions: cleanBathymetry → analysePings →
-                     aggregateCells → categoriseCells → buildLayers, plus a
-                     single-slot memoisation helper for downstream use
+                     aggregateCells → categoriseCells → buildLayers (with IDW grid
+                     and d3-contour helpers), plus a single-slot memoisation helper
   stats/             Rolling median, MAD, outlier-trimmed range
   constants.ts       Default thresholds (calibrated from deeper_analysis.py)
   types.ts           Pipeline result + option types
+src/storage/         IndexedDB schema (scans + raw files + cached results) via idb v8
+src/worker/          Web Worker hosting the pipeline; typed message protocol;
+                     stage memoisation; cancellation; progress reporting
+src/state/           Zustand store mediating IDB ↔ worker ↔ UI; 200ms threshold debounce
+src/map/             MapLibre wiring: colour ramps, four layer style specs, MapView
+                     component owning the MapLibre instance via useRef
 src/lib/             SHA-256 helpers (Web Crypto)
+src/App.tsx          Currently the developer harness; replaced by the real UI in Plan 3
 ```
 
-The analysis tree has no DOM/React/MapLibre/storage dependencies, which is what makes 90% per-file coverage achievable on the most consequential code.
+The `analysis/` tree has no DOM/React/MapLibre/storage dependencies, which is what makes 90% per-file coverage achievable on the most consequential code. The worker uses the same modules, exercised end-to-end via `@vitest/web-worker` integration tests.
 
 ## Reference materials
 
