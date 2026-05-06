@@ -1,4 +1,4 @@
-import type { FeatureCollection } from 'geojson';
+import type { Feature, FeatureCollection, MultiPolygon, Point } from 'geojson';
 import { trimmedRange } from '../stats/colorScale';
 import type {
   CategorisedCells,
@@ -7,8 +7,24 @@ import type {
   LayerBundle,
   ScaleRange,
 } from '../types';
+import { buildContourFeatures, computeContourLevels } from './contours';
+import { buildIdwGrid } from './grid';
 
 const FALLBACK_SCALE: ScaleRange = { min: 0, max: 1 };
+const BATHYMETRY_GRID_M = 1;
+const WEED_GRID_M = 2;
+const BATHYMETRY_CONTOUR_LEVELS = 12;
+const WEED_CONTOUR_LEVELS = 8;
+const IDW_K_NEAREST = 4;
+const IDW_RADIUS_M = 5;
+const METRES_PER_DEG_LAT = 111000;
+
+const SWEET_SPOT_COLOURS: Record<string, string> = {
+  gold: '#FFD700',
+  silver: '#7CB342',
+  bronze: '#1976D2',
+  weeded: '#FB8C00',
+};
 
 function emptyFc(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
@@ -19,12 +35,183 @@ function safeRange(values: readonly number[], trimPct: number): ScaleRange {
   return trimmedRange(values, trimPct);
 }
 
-/**
- * Plan 1 produces only the LayerBundle's scales plus empty placeholder
- * FeatureCollections. The actual grid-resampling + d3-contour rendering for
- * each layer is implemented in Plan 2's `src/map/layers/*.ts` modules and
- * threaded back through this function in that plan.
- */
+interface ProjectionAnchor {
+  lat0: number;
+  lon0: number;
+  meanLat: number;
+}
+
+function projectionFromCleanBath(clean: CleanBath): ProjectionAnchor {
+  let minLat = Infinity;
+  let minLon = Infinity;
+  let sumLat = 0;
+  for (const r of clean.rows) {
+    if (r.lat < minLat) minLat = r.lat;
+    if (r.lon < minLon) minLon = r.lon;
+    sumLat += r.lat;
+  }
+  return {
+    lat0: minLat,
+    lon0: minLon,
+    meanLat: clean.rows.length > 0 ? sumLat / clean.rows.length : 0,
+  };
+}
+
+function projectionFromCells(cells: CategorisedCells): ProjectionAnchor {
+  return {
+    lat0: cells.origin.lat,
+    lon0: cells.origin.lon,
+    meanLat: cells.origin.lat,
+  };
+}
+
+function buildBathymetryContours(clean: CleanBath, scale: ScaleRange): FeatureCollection {
+  if (clean.rows.length === 0) return emptyFc();
+  const anchor = projectionFromCleanBath(clean);
+  const lonMetresPerDeg = METRES_PER_DEG_LAT * Math.cos((anchor.meanLat * Math.PI) / 180);
+
+  const points = clean.rows.map((r) => ({
+    x: (r.lon - anchor.lon0) * lonMetresPerDeg,
+    y: (r.lat - anchor.lat0) * METRES_PER_DEG_LAT,
+    v: r.depth_m,
+  }));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+
+  const grid = buildIdwGrid(points, {
+    cellSize: BATHYMETRY_GRID_M,
+    kNearest: IDW_K_NEAREST,
+    radius: IDW_RADIUS_M,
+    minX,
+    minY,
+    maxX,
+    maxY,
+  });
+
+  const levels = computeContourLevels(scale, BATHYMETRY_CONTOUR_LEVELS);
+  const fc = buildContourFeatures(grid, levels);
+
+  // Reproject from grid (metres) coordinates to [lon, lat].
+  const features: Feature<MultiPolygon, { level: number }>[] = fc.features.map((f) => ({
+    type: 'Feature' as const,
+    geometry: {
+      type: 'MultiPolygon' as const,
+      coordinates: f.geometry.coordinates.map((poly) =>
+        poly.map((ring) =>
+          ring.map(([xm, ym]) => [
+            anchor.lon0 + (xm ?? 0) / lonMetresPerDeg,
+            anchor.lat0 + (ym ?? 0) / METRES_PER_DEG_LAT,
+          ]),
+        ),
+      ),
+    },
+    properties: { level: f.properties.level },
+  }));
+
+  return { type: 'FeatureCollection', features };
+}
+
+function buildWeedContours(cells: CategorisedCells, scale: ScaleRange): FeatureCollection {
+  if (cells.rows.length === 0) return emptyFc();
+  const anchor = projectionFromCells(cells);
+  const lonMetresPerDeg = METRES_PER_DEG_LAT * Math.cos((anchor.meanLat * Math.PI) / 180);
+
+  const points = cells.rows.map((c) => ({
+    x: c.cx,
+    y: c.cy,
+    v: c.mean_weed,
+  }));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+
+  const grid = buildIdwGrid(points, {
+    cellSize: WEED_GRID_M,
+    kNearest: IDW_K_NEAREST,
+    radius: IDW_RADIUS_M,
+    minX,
+    minY,
+    maxX,
+    maxY,
+  });
+
+  const levels = computeContourLevels(scale, WEED_CONTOUR_LEVELS);
+  const fc = buildContourFeatures(grid, levels);
+
+  const features: Feature<MultiPolygon, { level: number }>[] = fc.features.map((f) => ({
+    type: 'Feature' as const,
+    geometry: {
+      type: 'MultiPolygon' as const,
+      coordinates: f.geometry.coordinates.map((poly) =>
+        poly.map((ring) =>
+          ring.map(([xm, ym]) => [
+            anchor.lon0 + (xm ?? 0) / lonMetresPerDeg,
+            anchor.lat0 + (ym ?? 0) / METRES_PER_DEG_LAT,
+          ]),
+        ),
+      ),
+    },
+    properties: { level: f.properties.level },
+  }));
+
+  return { type: 'FeatureCollection', features };
+}
+
+function buildFishDensity(cells: CategorisedCells): FeatureCollection {
+  const features: Feature<Point, { fish_rate: number; n_pings: number }>[] = [];
+  for (const c of cells.rows) {
+    if (c.fish_rate <= 0) continue;
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+      properties: { fish_rate: c.fish_rate, n_pings: c.n_pings },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+interface SweetSpotProps {
+  category: string;
+  color: string;
+  n_pings: number;
+  fish_rate: number;
+  mean_weed: number;
+}
+
+function buildSweetSpots(cells: CategorisedCells): FeatureCollection {
+  const features: Feature<Point, SweetSpotProps>[] = [];
+  for (const c of cells.rows) {
+    if (c.category === 'none') continue;
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+      properties: {
+        category: c.category,
+        color: SWEET_SPOT_COLOURS[c.category] ?? '#999999',
+        n_pings: c.n_pings,
+        fish_rate: c.fish_rate,
+        mean_weed: c.mean_weed,
+      },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 export function buildLayers(
   clean: CleanBath,
   cells: CategorisedCells,
@@ -34,15 +221,17 @@ export function buildLayers(
   const weeds = cells.rows.map((c) => c.mean_weed);
   const fishRates = cells.rows.map((c) => c.fish_rate);
 
+  const scales = {
+    depth: safeRange(depths, colorScale.outlierTrimPct),
+    weed: safeRange(weeds, colorScale.outlierTrimPct),
+    fishRate: safeRange(fishRates, colorScale.outlierTrimPct),
+  };
+
   return {
-    bathymetry: emptyFc(),
-    weed: emptyFc(),
-    fishDensity: emptyFc(),
-    sweetSpots: emptyFc(),
-    scales: {
-      depth: safeRange(depths, colorScale.outlierTrimPct),
-      weed: safeRange(weeds, colorScale.outlierTrimPct),
-      fishRate: safeRange(fishRates, colorScale.outlierTrimPct),
-    },
+    bathymetry: buildBathymetryContours(clean, scales.depth),
+    weed: buildWeedContours(cells, scales.weed),
+    fishDensity: buildFishDensity(cells),
+    sweetSpots: buildSweetSpots(cells),
+    scales,
   };
 }
