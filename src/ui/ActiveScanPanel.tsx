@@ -1,6 +1,8 @@
 import { Box, Stack, Typography } from '@mui/material';
 import { useDeeperMapsStore } from '../state/store';
 import { LayerControls } from './LayerControls';
+import { ThresholdControls } from './ThresholdControls';
+import { ResetDefaultsButton } from './ResetDefaultsButton';
 
 export function ActiveScanPanel(): JSX.Element | null {
   const activeScanId = useDeeperMapsStore((s) => s.activeScanId);
@@ -13,7 +15,8 @@ export function ActiveScanPanel(): JSX.Element | null {
       <Stack spacing={2}>
         <Typography variant="subtitle1">{scan.name}</Typography>
         <LayerControls scan={scan} />
-        {/* ThresholdControls + ResetDefaultsButton land in Task 6 */}
+        <ThresholdControls scan={scan} />
+        <ResetDefaultsButton scanId={scan.id} />
       </Stack>
     </Box>
   );
