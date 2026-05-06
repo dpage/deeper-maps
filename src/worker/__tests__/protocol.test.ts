@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   AnalyseRequest,
+  CancelledResponse,
   CancelRequest,
   ErrorResponse,
   LayerBundleResponse,
@@ -94,6 +95,11 @@ describe('worker protocol', () => {
     expect(e.kind).toBe('error');
   });
 
+  it('CancelledResponse names the scan that was cancelled', () => {
+    const c: CancelledResponse = { kind: 'cancelled', scanId: 'x' };
+    expect(c.kind).toBe('cancelled');
+  });
+
   it('discriminated unions narrow correctly', () => {
     const messages: WorkerResponse[] = [
       {
@@ -120,6 +126,7 @@ describe('worker protocol', () => {
         warnings: [],
       },
       { kind: 'error', scanId: 'x', message: 'oops' },
+      { kind: 'cancelled', scanId: 'x' },
     ];
     let progressCount = 0;
     for (const m of messages) {

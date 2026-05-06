@@ -24,6 +24,12 @@ interface ScanState {
   cancelled: boolean;
 }
 
+class Cancelled extends Error {
+  constructor() {
+    super('cancelled');
+  }
+}
+
 const states = new Map<string, ScanState>();
 
 // Stage memoisation: one cache per stage, shared across scans (keyed by inputs).
@@ -49,15 +55,33 @@ function reportProgress(
 
 async function handleAnalyse(req: AnalyseRequest): Promise<void> {
   const { scanId } = req;
+  // Pre-register so a cancel arriving during parse can be honoured.
+  // (Without this, states.get(scanId) returns undefined while parseQuestUpload
+  // is awaiting and the cancel is silently dropped.)
+  const placeholder: ScanState = {
+    raw: { device: 'quest', bathymetry: [], sonar: [], source: [] },
+    warnings: [],
+    cancelled: false,
+  };
+  states.set(scanId, placeholder);
   try {
     reportProgress(scanId, 'parse', 0, 1);
     const { scan: raw, warnings } = await parseQuestUpload(req.rawFiles);
-    const state: ScanState = { raw, warnings, cancelled: false };
-    states.set(scanId, state);
+    // If a cancel arrived during parse, abort now.
+    if (placeholder.cancelled) {
+      post({ kind: 'cancelled', scanId });
+      return;
+    }
+    placeholder.raw = raw;
+    placeholder.warnings = warnings;
     reportProgress(scanId, 'parse', 1, 1);
 
     runPipeline(scanId, req.options);
   } catch (err) {
+    if (err instanceof Cancelled) {
+      post({ kind: 'cancelled', scanId });
+      return;
+    }
     postError(scanId, err);
   }
 }
@@ -72,6 +96,7 @@ async function handleRecompute(req: RecomputeRequest): Promise<void> {
     });
     return;
   }
+  // Reset cancelled in case a previous run left it true.
   state.cancelled = false;
   // Defer to next microtask so callers awaiting the response can register
   // listeners before the (synchronous) pipeline starts firing messages.
@@ -79,6 +104,10 @@ async function handleRecompute(req: RecomputeRequest): Promise<void> {
   try {
     runPipeline(req.scanId, req.options);
   } catch (err) {
+    if (err instanceof Cancelled) {
+      post({ kind: 'cancelled', scanId: req.scanId });
+      return;
+    }
     postError(req.scanId, err);
   }
 }
@@ -98,7 +127,7 @@ function runPipeline(scanId: string, options: AnalyseRequest['options']): void {
 
   const checkCancelled = () => {
     if (state.cancelled) {
-      throw new Error('cancelled');
+      throw new Cancelled();
     }
   };
 

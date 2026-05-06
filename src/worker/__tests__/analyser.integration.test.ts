@@ -162,7 +162,7 @@ describe('analyser.worker integration', () => {
     });
   }, 30000);
 
-  it('cancel marks state.cancelled so the next stage check throws', async () => {
+  it('cancel during recompute emits a cancelled response', async () => {
     const bath = loadFixture();
     const sonar = new Uint8Array(
       readFileSync(resolve(__dirname, '../../../test/fixtures/reference-sonar.csv')),
@@ -191,10 +191,61 @@ describe('analyser.worker integration', () => {
       });
       send(worker, { kind: 'cancel', scanId: 'sx' });
 
-      // Expect either a layerBundle (if cancel landed too late) OR an error('cancelled').
-      const r = await nextOf(worker, (m) => m.kind === 'layerBundle' || m.kind === 'error');
-      // Either outcome is acceptable; the contract is "no crash, no infinite work".
-      expect(['layerBundle', 'error']).toContain(r.kind);
+      const r = await nextOf(
+        worker,
+        (m) => m.kind === 'layerBundle' || m.kind === 'cancelled' || m.kind === 'error',
+      );
+      // Either outcome is acceptable: cancel may land too late (layerBundle) or
+      // in time (cancelled). Crashes (error) are NOT acceptable here.
+      expect(r.kind).not.toBe('error');
     });
   }, 30000);
+
+  it('reports an error when a pipeline stage throws (e.g. too many cells)', async () => {
+    // Build a synthetic scan large enough that aggregateCells exceeds MAX_CELLS=100_000.
+    // The reference fixture is too small (~1k pings) to ever trip the guard regardless
+    // of cellSizeM, so we synthesise > 100k distinct (lat, ts) pairs spaced ~1m apart
+    // and run with cellSizeM=0.5 → > 100k unique cells → aggregateCells throws.
+    const N = 100_010;
+    const baseTs = 1_700_000_000_000;
+    const baseLat = 51.7;
+    const baseLon = -1.43;
+    // ~1.11 m per 0.00001 deg of latitude. Step lat by 0.00001 (≈1.11 m) per row.
+    const latStep = 0.00001;
+
+    const bathLines: string[] = [];
+    const sonarLines: string[] = [];
+    // Sonar: 100 amp columns, all value 5 (well below all thresholds → no fish/weed,
+    // but produces a valid PerPingRow).
+    const ampPart = ',' + new Array(100).fill('5').join(',');
+    for (let i = 0; i < N; i++) {
+      const ts = baseTs + i * 100;
+      const lat = baseLat + i * latStep;
+      // 4-column bath: lat, lon, depth, ts (no temp)
+      bathLines.push(`${lat},${baseLon},1.5,${ts}`);
+      sonarLines.push(`${ts}${ampPart}`);
+    }
+    const bath = new TextEncoder().encode(bathLines.join('\n'));
+    const sonar = new TextEncoder().encode(sonarLines.join('\n'));
+
+    await withWorker(async (worker) => {
+      send(worker, {
+        kind: 'analyse',
+        scanId: 'sx',
+        rawFiles: [
+          { fileName: 'bathymetry.csv', bytes: bath },
+          { fileName: 'sonar.csv', bytes: sonar },
+        ],
+        options: {
+          ...DEFAULT_OPTIONS,
+          // 0.5 m cells, points spaced ~1.11 m apart → each point lands in its own cell.
+          cell: { cellSizeM: 0.5, minPingsPerCell: 1 },
+        },
+      });
+      const err = await nextOf(worker, (m) => m.kind === 'error');
+      expect(err.kind).toBe('error');
+      if (err.kind !== 'error') throw new Error('unreachable');
+      expect(err.message).toMatch(/too many cells/i);
+    });
+  }, 60000);
 });

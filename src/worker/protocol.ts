@@ -55,4 +55,13 @@ export interface ErrorResponse {
   stack?: string;
 }
 
-export type WorkerResponse = ProgressResponse | LayerBundleResponse | ErrorResponse;
+export interface CancelledResponse {
+  kind: 'cancelled';
+  scanId: string;
+}
+
+export type WorkerResponse =
+  | ProgressResponse
+  | LayerBundleResponse
+  | ErrorResponse
+  | CancelledResponse;
