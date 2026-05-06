@@ -28,6 +28,9 @@ function isStubFile(text: string): boolean {
 
 export function parseQuestBathymetry(text: string, diagnostics: ParseDiagnostics): BathRow[] {
   const parsed = Papa.parse<string[]>(text.trim(), { skipEmptyLines: true });
+  for (const e of parsed.errors) {
+    diagnostics.errors.push(`row ${e.row ?? '?'}: ${e.code} — ${e.message}`);
+  }
   const rawRows = parsed.data;
   if (rawRows.length === 0) {
     throw new Error('parseQuestBathymetry: no rows found');
@@ -50,6 +53,13 @@ export function parseQuestBathymetry(text: string, diagnostics: ParseDiagnostics
   for (let i = 0; i < rawRows.length; i++) {
     const cols = rawRows[i]!;
     if (cols.length !== firstColCount) {
+      diagnostics.malformedRowCount++;
+      continue;
+    }
+    // Reject rows with empty/whitespace cells: Number('') and Number('   ') both
+    // return 0, which would silently masquerade as a real "GPS not fixed" row
+    // (lat=0, lon=0) or a zero timestamp/depth.
+    if (cols.some((c) => c.trim() === '')) {
       diagnostics.malformedRowCount++;
       continue;
     }
@@ -95,6 +105,9 @@ export function parseQuestSonar(text: string, diagnostics: ParseDiagnostics): So
   }
 
   const parsed = Papa.parse<string[]>(text.trim(), { skipEmptyLines: true });
+  for (const e of parsed.errors) {
+    diagnostics.errors.push(`row ${e.row ?? '?'}: ${e.code} — ${e.message}`);
+  }
   const rawRows = parsed.data;
   if (rawRows.length === 0) throw new Error('parseQuestSonar: no rows found');
 
@@ -103,6 +116,13 @@ export function parseQuestSonar(text: string, diagnostics: ParseDiagnostics): So
   for (let i = 0; i < rawRows.length; i++) {
     const cols = rawRows[i]!;
     if (cols.length < 2) {
+      diagnostics.malformedRowCount++;
+      continue;
+    }
+    // Same rationale as in parseQuestBathymetry: an empty/whitespace cell would
+    // coerce to 0 and could create a zero-timestamp ping (joins to nothing) or a
+    // false zero amplitude that passes Number.isInteger.
+    if (cols.some((c) => c.trim() === '')) {
       diagnostics.malformedRowCount++;
       continue;
     }

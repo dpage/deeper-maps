@@ -13,7 +13,7 @@ export interface SonarPing {
 
 export interface SourceFileMeta {
   fileName: string;
-  bytes: number;
+  byteSize: number;
 }
 
 export type DeviceType = 'quest';

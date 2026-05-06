@@ -67,10 +67,37 @@ malformed_row_here
     );
   });
 
-  it('detects and rejects a stub file (< 256 bytes or < 3 rows)', () => {
+  it('rejects a single-line stub file', () => {
     const stub = `0,0,0,0`;
     const diagnostics: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
     expect(() => parseQuestBathymetry(stub, diagnostics)).toThrow(/stub file/i);
+  });
+
+  it('treats rows with empty cells as malformed (not GPS-zero)', () => {
+    const csv = `51.7,-1.43,1.5,18.4,1717000000000
+51.7,,1.5,18.4,1717000000067
+51.7,-1.43,1.5,18.4,1717000000134
+51.7,-1.43,1.5,18.4,1717000000201
+51.7,-1.43,1.5,18.4,1717000000268
+`;
+    const diagnostics: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const rows = parseQuestBathymetry(csv, diagnostics);
+    expect(rows).toHaveLength(4);
+    expect(diagnostics.malformedRowCount).toBe(1);
+    expect(rows.every((r) => r.lat === 51.7 && r.lon === -1.43)).toBe(true);
+  });
+
+  it('skips rows with the right column count but a non-numeric cell', () => {
+    const csv = `51.7,-1.43,1.5,18.4,1717000000000
+51.7,abc,1.5,18.4,1717000000067
+51.7,-1.43,1.5,18.4,1717000000134
+51.7,-1.43,1.5,18.4,1717000000201
+51.7,-1.43,1.5,18.4,1717000000268
+`;
+    const diagnostics: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const rows = parseQuestBathymetry(csv, diagnostics);
+    expect(rows).toHaveLength(4);
+    expect(diagnostics.malformedRowCount).toBe(1);
   });
 });
 
@@ -112,5 +139,19 @@ describe('parseQuestSonar', () => {
   it('detects a stub file', () => {
     const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
     expect(() => parseQuestSonar('1,2,3', diag)).toThrow(/stub file/i);
+  });
+
+  it('treats sonar rows with empty cells as malformed (timestamp/amp 0 collision)', () => {
+    const csv = `1717000000000,0,0,5,12,40,200,500
+,0,0,4,11,38,210,520,180
+1717000000134,0,0,4,11,38,210,520,180
+1717000000201,0,0,4,11,38,210,520,180
+1717000000268,0,0,4,11,38,210,520,180
+`;
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const pings = parseQuestSonar(csv, diag);
+    expect(pings).toHaveLength(4);
+    expect(diag.malformedRowCount).toBe(1);
+    expect(pings.every((p) => p.ts_ms !== 0)).toBe(true);
   });
 });

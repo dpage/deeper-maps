@@ -10,7 +10,7 @@ describe('parser types', () => {
         { lat: 51.7, lon: -1.43, depth_m: 1.3, temp_c: 18.4, ts_ms: 1717000000067 },
       ],
       sonar: [{ ts_ms: 1717000000000, amps: new Int32Array([0, 0, 100, 200]) }],
-      source: [{ fileName: 'bathymetry.csv', bytes: 1000 }],
+      source: [{ fileName: 'bathymetry.csv', byteSize: 1000 }],
     };
     expect(example.device).toBe('quest');
   });

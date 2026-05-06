@@ -20,8 +20,14 @@ function expandZips(uploads: UploadFile[]): UploadFile[] {
     if (u.fileName.toLowerCase().endsWith('.zip')) {
       const entries = unzipSync(u.bytes);
       for (const [name, bytes] of Object.entries(entries)) {
-        // Strip any leading directory components (Deeper sometimes nests files).
-        const base = name.split('/').pop() ?? name;
+        const segments = name.split('/');
+        // Skip macOS resource-fork metadata: __MACOSX/ subtree at any depth, and
+        // AppleDouble (._) sidecar files. Without this filter, a Mac-zipped scan
+        // can shadow real CSVs because expandZips strips parent directories.
+        if (segments.includes('__MACOSX')) continue;
+        const base = segments[segments.length - 1] ?? name;
+        if (base.startsWith('._')) continue;
+        if (base === '') continue; // directory entry
         out.push({ fileName: base, bytes });
       }
     } else {
@@ -52,13 +58,23 @@ export async function parseQuestUpload(uploads: UploadFile[]): Promise<UploadRes
   const source: SourceFileMeta[] = [];
   const bathDiag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
   const bathymetry = parseQuestBathymetry(strFromU8(bathFile.bytes), bathDiag);
-  source.push({ fileName: 'bathymetry.csv', bytes: bathFile.bytes.length });
+  source.push({ fileName: bathFile.fileName, byteSize: bathFile.bytes.length });
+  if (bathDiag.malformedRowCount > 0) {
+    warnings.push(
+      `bathymetry.csv: skipped ${bathDiag.malformedRowCount} of ${bathDiag.totalRows} malformed rows`,
+    );
+  }
 
   let sonar: RawScan['sonar'] = [];
   if (sonarFile) {
     const sonarDiag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
     sonar = parseQuestSonar(strFromU8(sonarFile.bytes), sonarDiag);
-    source.push({ fileName: 'sonar.csv', bytes: sonarFile.bytes.length });
+    source.push({ fileName: sonarFile.fileName, byteSize: sonarFile.bytes.length });
+    if (sonarDiag.malformedRowCount > 0) {
+      warnings.push(
+        `sonar.csv: skipped ${sonarDiag.malformedRowCount} of ${sonarDiag.totalRows} malformed rows`,
+      );
+    }
   } else {
     warnings.push('sonar.csv missing — bathymetry-only mode');
   }
