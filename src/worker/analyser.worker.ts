@@ -62,7 +62,7 @@ async function handleAnalyse(req: AnalyseRequest): Promise<void> {
   }
 }
 
-function handleRecompute(req: RecomputeRequest): void {
+async function handleRecompute(req: RecomputeRequest): Promise<void> {
   const state = states.get(req.scanId);
   if (!state) {
     post({
@@ -73,6 +73,9 @@ function handleRecompute(req: RecomputeRequest): void {
     return;
   }
   state.cancelled = false;
+  // Defer to next microtask so callers awaiting the response can register
+  // listeners before the (synchronous) pipeline starts firing messages.
+  await Promise.resolve();
   try {
     runPipeline(req.scanId, req.options);
   } catch (err) {
@@ -136,7 +139,7 @@ self.addEventListener('message', (e: MessageEvent<WorkerRequest>) => {
       void handleAnalyse(req);
       break;
     case 'recompute':
-      handleRecompute(req);
+      void handleRecompute(req);
       break;
     case 'cancel': {
       const state = states.get(req.scanId);
