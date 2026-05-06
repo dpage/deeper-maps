@@ -168,6 +168,40 @@ describe('useDeeperMapsStore', () => {
     expect(getStubbedPostMessage()).not.toHaveBeenCalled();
   });
 
+  it('setActiveScan A then B with cached A does not land A bundle in B view', async () => {
+    // Save scans A and B; cache results for A only.
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    const b = makeScan('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'B', 'hashB');
+    await saveScan(a, []);
+    await saveScan(b, []);
+    await saveScanResults({
+      scanId: a.id,
+      bundleVersion: 1,
+      builtAt: 0,
+      bundle: {
+        bathymetry: { type: 'FeatureCollection', features: [] },
+        weed: { type: 'FeatureCollection', features: [] },
+        fishDensity: { type: 'FeatureCollection', features: [] },
+        sweetSpots: { type: 'FeatureCollection', features: [] },
+        scales: {
+          depth: { min: 1, max: 2 },
+          weed: { min: 0, max: 1 },
+          fishRate: { min: 0, max: 1 },
+        },
+      },
+    });
+    await useDeeperMapsStore.getState().hydrate();
+
+    // Fire A and B concurrently; B "wins" (last call). The A cache load
+    // resolves first but must NOT land in the bundle field.
+    const promiseA = useDeeperMapsStore.getState().setActiveScan(a.id);
+    const promiseB = useDeeperMapsStore.getState().setActiveScan(b.id);
+    await Promise.all([promiseA, promiseB]);
+
+    expect(useDeeperMapsStore.getState().activeScanId).toBe(b.id);
+    expect(useDeeperMapsStore.getState().layerBundle).toBeNull();
+  });
+
   it('saveAndAnalyse persists, sets active, and dispatches an analyse request', async () => {
     const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
     const blob = new NodeBlob([new Uint8Array([1, 2, 3])]) as unknown as Blob;

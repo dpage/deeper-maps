@@ -69,9 +69,10 @@ export function __resetDebounceTimer(): void {
 let onMessageListener: ((e: MessageEvent<WorkerResponse>) => void) | null = null;
 
 /**
- * @internal — test-only. (Re-)attaches the worker message listener to the
- * worker currently on `globalThis.__deeperMapsWorker`. Production code does
- * not call this; the listener is attached lazily via `setTimeout` below.
+ * (Re-)attaches the worker message listener to the worker currently on
+ * `globalThis.__deeperMapsWorker`. Called once at module init via the
+ * lazy `setTimeout` below; tests also call it directly to attach a freshly
+ * stubbed worker in `beforeEach`.
  */
 export function __attachWorkerListener(): void {
   if (!onMessageListener) return;
@@ -119,6 +120,10 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     warnings: [],
 
     async hydrate() {
+      // TODO(spec §8.3): on `openDeeperMapsDb` failure (Safari private mode,
+      // quota exceeded on open), fall back to in-memory + surface a persistent
+      // banner. Plan 2 explicitly defers; the current behaviour is to throw,
+      // which Plan 3's ErrorBoundary catches.
       const list = await dbListScans();
       const byId: Record<string, StoredScan> = {};
       for (const s of list) byId[s.id] = s;
@@ -133,6 +138,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
 
       // Try the cache first.
       const cached = await loadScanResults(id);
+      if (get().activeScanId !== id) return; // user navigated away during await
       if (cached) {
         set({ layerBundle: cached.bundle });
         return;
@@ -140,12 +146,14 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
 
       // No cache — re-dispatch.
       const raws = await loadScanRawFiles(id);
+      if (get().activeScanId !== id) return;
       const rawBytes = await Promise.all(
         raws.map(async (r) => ({
           fileName: r.fileName,
           bytes: new Uint8Array(await r.blob.arrayBuffer()),
         })),
       );
+      if (get().activeScanId !== id) return; // also guard after the Promise.all
       dispatchToWorker({
         kind: 'analyse',
         scanId: id,
@@ -184,6 +192,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         recomputeTimer = null;
         const scan = get().scans[scanId];
         if (!scan) return;
+        // TODO(spec §8.3): handle QuotaExceededError on this IDB write.
         void persistScan(scan);
         dispatchToWorker({ kind: 'recompute', scanId, options: thresholds });
       }, DEBOUNCE_MS);
@@ -198,6 +207,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         updatedAt: Date.now(),
       };
       set((s) => ({ scans: { ...s.scans, [scanId]: updated } }));
+      // TODO(spec §8.3): handle QuotaExceededError on this IDB write.
       await persistScan(updated);
     },
 
@@ -206,6 +216,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       if (!scan) return;
       const updated: StoredScan = { ...scan, baseLayer: base, updatedAt: Date.now() };
       set((s) => ({ scans: { ...s.scans, [scanId]: updated } }));
+      // TODO(spec §8.3): handle QuotaExceededError on this IDB write.
       await persistScan(updated);
     },
 
