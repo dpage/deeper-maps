@@ -6,6 +6,7 @@ import type {
   ColorScaleOptions,
   LayerBundle,
   ScaleRange,
+  ScanCategory,
 } from '../types';
 import { buildContourFeatures, computeContourLevels } from './contours';
 import { buildIdwGrid } from './grid';
@@ -19,7 +20,9 @@ const IDW_K_NEAREST = 4;
 const IDW_RADIUS_M = 5;
 const METRES_PER_DEG_LAT = 111000;
 
-const SWEET_SPOT_COLOURS: Record<string, string> = {
+type SweetSpotCategory = Exclude<ScanCategory, 'none'>;
+
+const SWEET_SPOT_COLOURS: Record<SweetSpotCategory, string> = {
   gold: '#FFD700',
   silver: '#7CB342',
   bronze: '#1976D2',
@@ -58,10 +61,17 @@ function projectionFromCleanBath(clean: CleanBath): ProjectionAnchor {
 }
 
 function projectionFromCells(cells: CategorisedCells): ProjectionAnchor {
+  // origin is (min lat, min lon) per aggregateCells, but the forward
+  // projection used cos(actual mean lat) — see aggregateCells.ts:21. Recompute
+  // the mean from the cell rows so the inverse projection here uses the same
+  // cosine factor.
+  let sumLat = 0;
+  for (const r of cells.rows) sumLat += r.lat;
+  const meanLat = cells.rows.length > 0 ? sumLat / cells.rows.length : cells.origin.lat;
   return {
     lat0: cells.origin.lat,
     lon0: cells.origin.lon,
-    meanLat: cells.origin.lat,
+    meanLat,
   };
 }
 
@@ -186,7 +196,7 @@ function buildFishDensity(cells: CategorisedCells): FeatureCollection {
 }
 
 interface SweetSpotProps {
-  category: string;
+  category: SweetSpotCategory;
   color: string;
   n_pings: number;
   fish_rate: number;
@@ -202,7 +212,7 @@ function buildSweetSpots(cells: CategorisedCells): FeatureCollection {
       geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
       properties: {
         category: c.category,
-        color: SWEET_SPOT_COLOURS[c.category] ?? '#999999',
+        color: SWEET_SPOT_COLOURS[c.category],
         n_pings: c.n_pings,
         fish_rate: c.fish_rate,
         mean_weed: c.mean_weed,
