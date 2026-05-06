@@ -85,6 +85,47 @@ describe('analyseSinglePing', () => {
     expect(res?.noise_floor).toBe(7);
     expect(res?.fish_count).toBeGreaterThanOrEqual(1);
   });
+
+  it('matches numpy median (avg-of-middles, then int) for even-length noise slices', () => {
+    // n > 300 so the noise-floor branch runs over a real water_zone slice.
+    // water_zone = vals[ringdownBins..max(ringdownBins+50, n-200)] = vals[30..400] (length 370 — odd).
+    // We need an even-length slice to hit the avg-of-middles branch, so set bins = 460
+    // → water_zone = vals[30..max(80, 260)] = vals[30..260] (length 230 — even).
+    const bins = 460;
+    const amps = new Int32Array(bins);
+    // Ringdown 0..29
+    for (let i = 0; i < 30; i++) amps[i] = 1500;
+    // Mid-water column 30..259: alternate 5 and 8, so sorted middles are 5 and 8 → avg 6.5 → trunc 6.
+    // (115 fives and 115 eights → sorted, the two middles at positions 114 and 115 are 5 and 8.)
+    for (let i = 30; i < 260; i++) amps[i] = i % 2 === 0 ? 5 : 8;
+    // Fill 260..454 with low amplitude (post-water-zone, pre-bottom).
+    for (let i = 260; i < bins - 5; i++) amps[i] = 5;
+    // Bottom in last 5 bins.
+    for (let i = bins - 5; i < bins; i++) amps[i] = 1500;
+    const ping = { ts_ms: 0, amps };
+    const res = analyseSinglePing(ping, 1.0, DEFAULT_SONAR_OPTIONS);
+    expect(res).not.toBeNull();
+    // The whole point: numpy.median of [5,5,...,8,8,...] (sorted: 115 fives then 115 eights)
+    // = (5 + 8) / 2 = 6.5; int(6.5) = 6. The old upper-median code would have returned 8.
+    expect(res?.noise_floor).toBe(6);
+  });
+
+  it('matches numpy median for odd-length noise slices (picks the middle)', () => {
+    // bins = 600 → water_zone = vals[30..max(80, 400)] = vals[30..400] (length 370 — wait, even).
+    // Use bins = 461 → water_zone = vals[30..max(80, 261)] = vals[30..261] (length 231 — odd).
+    const bins = 461;
+    const amps = new Int32Array(bins);
+    for (let i = 0; i < 30; i++) amps[i] = 1500;
+    // Mid-water 30..260 (231 bins). Set values so the sorted middle is exactly 7.
+    // 115 below (=5), 1 middle (=7), 115 above (=9). Sorted middle index = 115 → value 7.
+    for (let i = 30; i < 145; i++) amps[i] = 5;
+    amps[145] = 7;
+    for (let i = 146; i < 261; i++) amps[i] = 9;
+    for (let i = 261; i < bins - 5; i++) amps[i] = 5;
+    for (let i = bins - 5; i < bins; i++) amps[i] = 1500;
+    const res = analyseSinglePing({ ts_ms: 0, amps }, 1.0, DEFAULT_SONAR_OPTIONS);
+    expect(res?.noise_floor).toBe(7);
+  });
 });
 
 describe('analysePings (per-file aggregation)', () => {

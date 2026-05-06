@@ -14,23 +14,12 @@ interface PingAnalysis {
 
 export function analyseSinglePing(
   ping: SonarPing,
-  depth_m: number,
+  _depth_m: number,
   opts: SonarOptions,
 ): PingAnalysis | null {
   const vals = ping.amps;
   const n = vals.length;
   if (n < MIN_USEFUL_BINS) return null;
-
-  // Bottom edge: walk back from end until amplitude drops below 30, capped at predicted bottom.
-  let bottomEdge = n - 1;
-  for (let j = n - 1; j > Math.max(opts.ringdownBins, n - 200); j--) {
-    if (vals[j]! < 30) {
-      bottomEdge = j;
-      break;
-    }
-  }
-  const predictedBottom = Math.min(Math.floor(opts.binsPerM * depth_m), n - 1);
-  bottomEdge = Math.min(bottomEdge, predictedBottom);
 
   // Hard bottom: peak in last 30 bins.
   const hardStart = Math.max(0, n - 30);
@@ -48,9 +37,17 @@ export function analyseSinglePing(
   if (n > 300) {
     const lo = opts.ringdownBins;
     const hi = Math.max(opts.ringdownBins + 50, n - 200);
+    // hi = max(ringdownBins + 50, n - 200) ≥ ringdownBins + 50 > lo, so slice length ≥ 50.
     const slice = Array.from(vals.slice(lo, hi));
     slice.sort((a, b) => a - b);
-    const m = slice.length === 0 ? 1 : slice[slice.length >> 1]!;
+    const len = slice.length;
+    // numpy.median: for even-length input, average the two middles; Python's
+    // int(...) wrapper truncates toward zero. Match exactly to keep equivalent
+    // behaviour vs deeper_analysis.py:179.
+    const m =
+      len % 2 === 0
+        ? Math.trunc((slice[(len >> 1) - 1]! + slice[len >> 1]!) / 2)
+        : slice[len >> 1]!;
     noiseFloor = Math.max(m, 1);
   } else {
     noiseFloor = 7;
@@ -106,9 +103,6 @@ export function analyseSinglePing(
       if (peak > fish_max_amp) fish_max_amp = peak;
     }
   }
-
-  // Touch bottomEdge so it isn't unused; future stages may want it.
-  void bottomEdge;
 
   return {
     weed_height_m,

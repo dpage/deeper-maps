@@ -2,11 +2,19 @@ import type { BathRow } from '../parsers/types';
 import { detectLiftouts } from '../stats/outliers';
 import type { CleanBath, CleanBathRow, LiftoutOptions, SessionMeta } from '../types';
 
+// A row has a real GPS fix if EITHER coordinate is nonzero. The Quest emits
+// (0, 0) when there's no fix; a row with only one zero is either a real
+// near-equator/prime-meridian fix or pathological — in both cases we treat it
+// as a fix and do NOT interpolate over it.
+function hasGps(r: BathRow): boolean {
+  return r.lat !== 0 || r.lon !== 0;
+}
+
 function dedupePreferGps(rows: readonly BathRow[]): BathRow[] {
   const sorted = [...rows].sort((a, b) => {
     if (a.ts_ms !== b.ts_ms) return a.ts_ms - b.ts_ms;
-    const aGps = a.lat !== 0 ? 1 : 0;
-    const bGps = b.lat !== 0 ? 1 : 0;
+    const aGps = hasGps(a) ? 1 : 0;
+    const bGps = hasGps(b) ? 1 : 0;
     return bGps - aGps;
   });
   const out: BathRow[] = [];
@@ -28,8 +36,7 @@ function interpolateGps(rows: BathRow[]): BathRow[] {
   let nextIdx = -1;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]!;
-    const hasGps = r.lat !== 0 && r.lon !== 0;
-    if (hasGps) {
+    if (hasGps(r)) {
       out.push(r);
       prev = r;
       next = undefined;
@@ -41,7 +48,7 @@ function interpolateGps(rows: BathRow[]): BathRow[] {
       nextIdx = -1;
       for (let j = i + 1; j < rows.length; j++) {
         const candidate = rows[j]!;
-        if (candidate.lat !== 0 && candidate.lon !== 0) {
+        if (hasGps(candidate)) {
           next = candidate;
           nextIdx = j;
           break;
