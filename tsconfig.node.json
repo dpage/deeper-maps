@@ -14,5 +14,5 @@
     "skipLibCheck": true,
     "esModuleInterop": true
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "eslint.config.js", "scripts/**/*.ts"]
+  "include": ["vite.config.ts", "vitest.config.ts", "eslint.config.js"]
 }
