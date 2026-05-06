@@ -14,9 +14,7 @@ describe('worker protocol', () => {
     const r: AnalyseRequest = {
       kind: 'analyse',
       scanId: '11111111-1111-1111-1111-111111111111',
-      rawFiles: [
-        { fileName: 'bathymetry.csv', bytes: new Uint8Array([1, 2, 3]) },
-      ],
+      rawFiles: [{ fileName: 'bathymetry.csv', bytes: new Uint8Array([1, 2, 3]) }],
       options: {
         liftout: {
           hardThresholdM: 5,

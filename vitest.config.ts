@@ -22,6 +22,10 @@ export default defineConfig({
         // Worker-inline probe; verified by build output (grep on dist/index.html),
         // not by unit tests. Removed in Plan 2 when the real worker lands.
         'src/probe/**',
+        // Worker entry: instantiated only via ?worker&inline; integration-tested via
+        // @vitest/web-worker rather than unit-tested directly. Coverage of internal
+        // pipeline stages comes from the per-stage unit tests in src/analysis/.
+        'src/worker/analyser.worker.ts',
         'src/**/*.test.ts',
         'src/**/*.test.tsx',
         'src/**/__tests__/**',
