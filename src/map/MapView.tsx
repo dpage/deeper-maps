@@ -96,6 +96,37 @@ export function MapView(): JSX.Element {
         map.addSource(sourceId, builder.source);
         map.addLayer(builder.layer);
       }
+      // If a bundle is already in the store (cache hit before mount), push it now.
+      // Otherwise the layerBundle effect's dep won't refire and overlays would
+      // render empty until the next bundle update.
+      const snapshot = useDeeperMapsStore.getState();
+      const initialBundle = snapshot.layerBundle;
+      if (initialBundle) {
+        type SetDataSrc = { setData: (d: GeoJSON.FeatureCollection) => void };
+        (map.getSource(BATHYMETRY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
+          initialBundle.bathymetry,
+        );
+        (map.getSource(WEED_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
+          initialBundle.weed,
+        );
+        (map.getSource(FISH_DENSITY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
+          initialBundle.fishDensity,
+        );
+        (map.getSource(SWEET_SPOTS_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
+          initialBundle.sweetSpots,
+        );
+      }
+      // Apply current layer visibility (in case activeScan is set before mount).
+      const initialScan = snapshot.activeScanId ? snapshot.scans[snapshot.activeScanId] : undefined;
+      if (initialScan) {
+        for (const { key, layerId } of LAYER_VISIBILITY_KEYS) {
+          map.setLayoutProperty(
+            layerId,
+            'visibility',
+            initialScan.layerVisibility[key] ? 'visible' : 'none',
+          );
+        }
+      }
     });
     return () => {
       map.remove();
