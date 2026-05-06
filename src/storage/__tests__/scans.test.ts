@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { Blob as NodeBlob } from 'node:buffer';
 import {
   DEFAULT_CATEGORY_THRESHOLDS,
   DEFAULT_CELL_OPTIONS,
@@ -55,7 +56,12 @@ afterEach(async () => {
 describe('scans CRUD', () => {
   it('saves and loads a scan with raw files', async () => {
     const scan = makeScan();
-    const blob = new Blob([new Uint8Array([1, 2, 3])]);
+    // jsdom's global Blob is NOT structured-cloneable (fake-indexeddb's
+    // structured-clone shim flattens it to {}). node:buffer's Blob IS
+    // structured-cloneable, so we use it here to assert real byte-level
+    // round-trip — which is the central correctness property of the
+    // scanRawFiles store that Phase B's worker depends on.
+    const blob = new NodeBlob([new Uint8Array([1, 2, 3])]) as unknown as Blob;
     await saveScan(scan, [{ fileName: 'bathymetry.csv', blob }]);
 
     const list = await listScans();
@@ -65,7 +71,8 @@ describe('scans CRUD', () => {
     const raws = await loadScanRawFiles(scan.id);
     expect(raws).toHaveLength(1);
     expect(raws[0]?.fileName).toBe('bathymetry.csv');
-    expect(raws[0]?.blob).toBeDefined();
+    const buf = await raws[0]!.blob.arrayBuffer();
+    expect(new Uint8Array(buf)).toEqual(new Uint8Array([1, 2, 3]));
   });
 
   it('finds a scan by content hash', async () => {
@@ -88,6 +95,10 @@ describe('scans CRUD', () => {
     const list = await listScans();
     expect(list[0]?.name).toBe('New Name');
     expect(list[0]?.updatedAt).toBeGreaterThanOrEqual(scan.updatedAt);
+  });
+
+  it('renameScan throws when the scan does not exist', async () => {
+    await expect(renameScan('does-not-exist', 'x')).rejects.toThrow(/no scan with id/);
   });
 
   it('deletes a scan along with its raw files and cached results', async () => {

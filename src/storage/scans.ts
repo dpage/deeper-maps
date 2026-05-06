@@ -6,6 +6,13 @@ export interface RawFileToSave {
   blob: Blob;
 }
 
+/**
+ * Persist a scan and its raw files in a single atomic transaction.
+ *
+ * `saveScan` is upsert by `scan.id`. Duplicate-content detection is the
+ * caller's responsibility — see {@link findScanByContentHash} and the
+ * upload flow in src/ui/UploadDialog.tsx (Plan 3 Task 4).
+ */
 export async function saveScan(scan: StoredScan, rawFiles: RawFileToSave[]): Promise<void> {
   const db = await openDeeperMapsDb();
   const tx = db.transaction(['scans', 'scanRawFiles'], 'readwrite');
