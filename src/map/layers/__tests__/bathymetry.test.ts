@@ -10,7 +10,7 @@ describe('buildBathymetryStyle', () => {
   it('returns a fill layer with an interpolate paint expression bound to scale', () => {
     const style = buildBathymetryStyle({ min: 1.0, max: 3.0 });
     expect(style.layer.type).toBe('fill');
-    expect(style.layer.source).toBe(BATHYMETRY_SOURCE_ID);
+    expect((style.layer as { source: string }).source).toBe(BATHYMETRY_SOURCE_ID);
     const fillColor = (style.layer.paint as Record<string, unknown>)['fill-color'];
     expect(Array.isArray(fillColor)).toBe(true);
     if (Array.isArray(fillColor)) {

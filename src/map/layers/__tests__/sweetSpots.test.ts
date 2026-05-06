@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildSweetSpotsStyle,
-  SWEET_SPOTS_LAYER_ID,
-  SWEET_SPOTS_SOURCE_ID,
-} from '../sweetSpots';
+import { buildSweetSpotsStyle, SWEET_SPOTS_LAYER_ID, SWEET_SPOTS_SOURCE_ID } from '../sweetSpots';
 
 describe('buildSweetSpotsStyle', () => {
   it('returns a categorical-colour circle layer', () => {
