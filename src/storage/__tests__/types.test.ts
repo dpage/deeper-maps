@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  StoredRawFile,
-  StoredScan,
-  StoredScanResults,
-} from '../types';
+import type { StoredRawFile, StoredScan, StoredScanResults } from '../types';
 
 describe('storage types', () => {
   it('StoredScan carries metadata + thresholds + UI state', () => {
