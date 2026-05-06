@@ -1,0 +1,2031 @@
+{
+  "n_pings_total": 1125,
+  "fish_pings": 375,
+  "cells": [
+    {
+      "cx": 0.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 0.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.5,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 2.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 2.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.55,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 4.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.6,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 6.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 6.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.65,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 8.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 8.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.7,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 10.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.75,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 12.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 12.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.8,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 14.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 14.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.85,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 16.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.9,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 18.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 18.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 1.95,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 20.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 20.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 2.0,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 22.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 2.05,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 24.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 24.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 2.1,
+      "mean_weed": 0.0,
+      "fish_rate": 1.0,
+      "category": "gold"
+    },
+    {
+      "cx": 26.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 26.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 2.15,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 0.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 2.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 4.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 6.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 8.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 10.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 12.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 14.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 16.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 18.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 20.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 22.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 24.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 26.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    },
+    {
+      "cx": 28.0,
+      "cy": 28.0,
+      "n_pings": 5,
+      "mean_depth": 2.2,
+      "mean_weed": 0.0,
+      "fish_rate": 0.0,
+      "category": "none"
+    }
+  ]
+}

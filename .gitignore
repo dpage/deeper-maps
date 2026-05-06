@@ -19,3 +19,7 @@ coverage/
 # Editor
 .vscode/
 .idea/
+
+# Python (deeper_analysis.py reference + scripts/build-equivalence-fixture.py)
+__pycache__/
+*.pyc

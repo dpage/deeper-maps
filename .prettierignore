@@ -2,3 +2,6 @@ dist/
 coverage/
 node_modules/
 package-lock.json
+test/fixtures/reference-bath.csv
+test/fixtures/reference-sonar.csv
+test/fixtures/reference-snapshot.json
