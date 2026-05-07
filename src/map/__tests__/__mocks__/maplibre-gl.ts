@@ -17,6 +17,7 @@ export function __resetSetDataCalls(): void {
 
 class MockMap {
   loaded = vi.fn(() => true);
+  isStyleLoaded = vi.fn(() => true);
   on = vi.fn((event: string, cb: () => void) => {
     if (event === 'load') setTimeout(cb, 0);
     return this;

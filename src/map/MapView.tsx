@@ -138,6 +138,7 @@ export function MapView(): JSX.Element {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !layerBundle) return;
+    if (!map.isStyleLoaded()) return; // initial-mount path handles cache hits
     type SetDataSrc = { setData: (d: GeoJSON.FeatureCollection) => void };
     (map.getSource(BATHYMETRY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
       layerBundle.bathymetry,
@@ -155,6 +156,7 @@ export function MapView(): JSX.Element {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !activeScan) return;
+    if (!map.isStyleLoaded()) return; // initial-mount path applies on load
     for (const { key, layerId } of LAYER_VISIBILITY_KEYS) {
       const visible = activeScan.layerVisibility[key];
       map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');

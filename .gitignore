@@ -23,3 +23,8 @@ coverage/
 # Python (deeper_analysis.py reference + scripts/build-equivalence-fixture.py)
 __pycache__/
 *.pyc
+
+# Playwright outputs
+test-results/
+playwright-report/
+e2e/.auth/
