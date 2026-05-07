@@ -1,0 +1,36 @@
+name: Release
+
+# Triggered by pushing a `v*` tag (e.g. `git tag v1.0 && git push --tags`).
+# Builds the single-file dist/index.html and creates a GitHub Release with
+# auto-generated notes from the commit history. The Release page is what
+# README.md's "Download the latest index.html" link resolves to.
+#
+# Pages deployment is a parallel workflow (.github/workflows/pages.yml) on
+# the same trigger.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/index.html
