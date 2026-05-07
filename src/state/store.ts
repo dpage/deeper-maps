@@ -164,7 +164,17 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
 
     async saveAndAnalyse(scan, rawFiles) {
       await saveScan(scan, rawFiles);
-      set((s) => ({ scans: { ...s.scans, [scan.id]: scan }, activeScanId: scan.id }));
+      // Clear any previous bundle/progress when a new scan goes active. Without
+      // this, MapView's layerBundle effect runs against the OLD bundle while
+      // activeScanId already points at the new scan, fires fitBounds with the
+      // wrong extents, and prematurely bumps `lastFramedScanIdRef` so the
+      // real bundle's arrival no longer triggers a reframe.
+      set((s) => ({
+        scans: { ...s.scans, [scan.id]: scan },
+        activeScanId: scan.id,
+        layerBundle: null,
+        progress: null,
+      }));
       const rawBytes = await Promise.all(
         rawFiles.map(async (r) => ({
           fileName: r.fileName,

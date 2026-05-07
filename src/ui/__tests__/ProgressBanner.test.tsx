@@ -32,21 +32,31 @@ describe('<ProgressBanner/>', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders the stage and percent when progress is set', () => {
+  it('renders the stage label and an indeterminate progress indicator (no percent)', () => {
     useDeeperMapsStore.setState({
       progress: { stage: 'analysePings', processed: 1000, total: 5000 },
     });
     render(<ProgressBanner />);
-    expect(screen.getByText(/analyse pings/i)).toBeInTheDocument();
-    expect(screen.getByText(/20\s*%/)).toBeInTheDocument();
+    // Honest, friendly label — no percentage spelled out.
+    expect(screen.getByText(/analysing sonar pings…?/i)).toBeInTheDocument();
+    // Two progressbar roles: the spinner and the linear bar.
+    const bars = screen.getAllByRole('progressbar');
+    expect(bars.length).toBeGreaterThanOrEqual(2);
+    // Specifically the linear bar must be indeterminate (no aria-valuenow).
+    const linear = bars.find((el) => el.getAttribute('aria-label') === 'Analysis in progress');
+    expect(linear).toBeDefined();
+    expect(linear?.getAttribute('aria-valuenow')).toBeNull();
+    // The container is a status region for screen readers.
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('renders 0% when total is 0 (avoids divide-by-zero)', () => {
+  it('renders for the parse stage with no determinate value', () => {
     useDeeperMapsStore.setState({
       progress: { stage: 'parse', processed: 0, total: 0 },
     });
     render(<ProgressBanner />);
-    expect(screen.getByText(/parsing/i)).toBeInTheDocument();
-    expect(screen.getByText(/0\s*%/)).toBeInTheDocument();
+    expect(screen.getByText(/parsing scan files…?/i)).toBeInTheDocument();
+    // No "0%" text any more.
+    expect(screen.queryByText(/0\s*%/)).toBeNull();
   });
 });

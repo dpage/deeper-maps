@@ -221,6 +221,25 @@ describe('useDeeperMapsStore', () => {
     });
   });
 
+  it('saveAndAnalyse clears any previous layerBundle and progress (so MapView can reframe on the new scan)', async () => {
+    // Seed a stale bundle from a prior scan plus in-flight progress to mimic
+    // a real user uploading a new scan while another is on-screen.
+    useDeeperMapsStore.setState({
+      layerBundle: emptyBundle(),
+      progress: { stage: 'parse', processed: 0, total: 1 },
+    });
+
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    const blob = new NodeBlob([new Uint8Array([1, 2, 3])]) as unknown as Blob;
+
+    await useDeeperMapsStore.getState().saveAndAnalyse(a, [{ fileName: 'bathymetry.csv', blob }]);
+
+    const s = useDeeperMapsStore.getState();
+    expect(s.activeScanId).toBe(a.id);
+    expect(s.layerBundle).toBeNull();
+    expect(s.progress).toBeNull();
+  });
+
   it('updateThresholds debounces worker dispatch', async () => {
     // IDB setup must happen under real timers — fake-indexeddb's transaction
     // microtasks rely on the runtime's real timer queue.

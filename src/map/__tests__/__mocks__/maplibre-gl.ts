@@ -52,19 +52,49 @@ export function __resetAll(): void {
   __resetAddImageCalls();
   __resetFitBoundsCalls();
   __resetSetStyleCalls();
+  __isStyleLoadedReturn = true;
+  __pendingStyleLoadCallbacks.length = 0;
+}
+
+/**
+ * Lets a test simulate "style is mid-swap": when set to `false`, subsequent
+ * `MockMap.isStyleLoaded()` calls return `false` AND `once('style.load', cb)`
+ * stops auto-firing — instead it pushes the callback into
+ * `__pendingStyleLoadCallbacks` so the test can later flush it via
+ * `__flushStyleLoad()` to mimic the style finishing loading.
+ */
+export let __isStyleLoadedReturn = true;
+export function __setStyleLoaded(loaded: boolean): void {
+  __isStyleLoadedReturn = loaded;
+}
+export const __pendingStyleLoadCallbacks: Array<() => void> = [];
+export function __flushStyleLoad(): void {
+  // Mimic MapLibre: by the time style.load fires, the style has actually
+  // loaded, so isStyleLoaded() reads true again.
+  __isStyleLoadedReturn = true;
+  const cbs = __pendingStyleLoadCallbacks.splice(0);
+  for (const cb of cbs) cb();
 }
 
 class MockMap {
   loaded = vi.fn(() => true);
-  isStyleLoaded = vi.fn(() => true);
+  isStyleLoaded = vi.fn(() => __isStyleLoadedReturn);
   // Most tests just need 'load' to fire on next tick. 'style.load' fires the
   // same way (production code uses it after `setStyle`).
   on = vi.fn((event: string, cb: () => void) => {
-    if (event === 'load' || event === 'style.load') setTimeout(cb, 0);
+    if (event === 'load') setTimeout(cb, 0);
+    if (event === 'style.load') {
+      if (__isStyleLoadedReturn) setTimeout(cb, 0);
+      else __pendingStyleLoadCallbacks.push(cb);
+    }
     return this;
   });
   once = vi.fn((event: string, cb: () => void) => {
-    if (event === 'load' || event === 'style.load') setTimeout(cb, 0);
+    if (event === 'load') setTimeout(cb, 0);
+    if (event === 'style.load') {
+      if (__isStyleLoadedReturn) setTimeout(cb, 0);
+      else __pendingStyleLoadCallbacks.push(cb);
+    }
     return this;
   });
   addSource = vi.fn();

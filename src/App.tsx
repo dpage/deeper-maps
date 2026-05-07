@@ -5,6 +5,7 @@ import { useDeeperMapsStore } from './state/store';
 import type { BaseLayerId } from './storage/types';
 import { ActiveScanPanel } from './ui/ActiveScanPanel';
 import { AppHeader } from './ui/AppHeader';
+import { CompletionToast } from './ui/CompletionToast';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { Layout } from './ui/Layout';
 import { Legend } from './ui/Legend';
@@ -53,6 +54,7 @@ export function App(): JSX.Element {
           }
         />
         <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
+        <CompletionToast />
       </ErrorBoundary>
     </ThemeProvider>
   );

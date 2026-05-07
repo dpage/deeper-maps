@@ -196,4 +196,42 @@ describe('<MapView/>', () => {
 
     expect(mock.__setStyleCalls.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('defers layerBundle apply via style.load when style is mid-swap (instead of dropping the update)', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    // Mount with a scan but no bundle yet.
+    const scan = makeScan('44444444-4444-4444-4444-444444444444');
+    useDeeperMapsStore.setState({ scans: { [scan.id]: scan }, activeScanId: scan.id });
+    render(<MapView />);
+    // Let the initial load fire.
+    await new Promise((r) => setTimeout(r, 5));
+
+    // Reset capture lists; pretend the style is now mid-swap.
+    mock.__resetSetDataCalls();
+    mock.__resetFitBoundsCalls();
+    mock.__setStyleLoaded(false);
+
+    // The layerBundle arrives DURING the style swap.
+    const bundle = bundleWith({ sw: [-1.45, 51.7], ne: [-1.4, 51.75] });
+    act(() => {
+      useDeeperMapsStore.setState({ layerBundle: bundle });
+    });
+    // Let the layerBundle effect run synchronously.
+    await new Promise((r) => setTimeout(r, 5));
+
+    // Nothing applied yet — the effect deferred via map.once('style.load', ...).
+    expect(mock.__setDataCalls.length).toBe(0);
+    expect(mock.__fitBoundsCalls.length).toBe(0);
+
+    // Now flush the deferred style.load — should apply data and frame.
+    act(() => {
+      mock.__flushStyleLoad();
+    });
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(mock.__setDataCalls.length).toBeGreaterThanOrEqual(4);
+    expect(mock.__fitBoundsCalls.length).toBeGreaterThanOrEqual(1);
+  });
 });
