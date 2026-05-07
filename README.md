@@ -4,75 +4,68 @@ A 100% client-side web app for visualising and analysing sonar scan data exporte
 
 Open `index.html` in a browser to use it. No installation, no server, no account.
 
-## Status
+## Features
 
-**Plan 2 complete.** Storage, worker, state, and map rendering are all in place. A developer harness page at `npm run dev` exercises the full data flow: pick a Quest zip, watch the staged pipeline run in a Web Worker, see the four data layers render on a MapLibre map. Plan 3 swaps the harness for the real MUI UI (scan library sidebar, threshold sliders, legend, progress banner) and adds the Playwright E2E suite.
+- Upload a Deeper Quest scan zip — folder with `bathymetry.csv` + `sonar.csv`. Macos-zipped exports work too (resource forks ignored).
+- All processing happens locally in a Web Worker; no data leaves your machine.
+- Four toggleable layers over a real-world map (OpenStreetMap or Esri satellite, no API keys):
+  - Bathymetry filled contours (viridis_r — deeper = darker)
+  - Weed cover (Greens)
+  - Fish density graduated circles (YlOrRd, sized by sample count)
+  - Sweet spots — Gold / Silver / Bronze / Weeded categorical markers
+- Threshold sliders with calibrated defaults; tweak any parameter, see the map update in seconds.
+- Scans library backed by IndexedDB — your scans persist across sessions.
+- Single-file `index.html` distribution — runs from a USB stick on any modern browser.
 
-What works today:
+## Quickstart
 
-- Quest scan parser: handles 4-column and 5-column bathymetry CSVs, variable-width sonar amplitude rows, zip uploads (with macOS resource-fork and `__MACOSX/` filtering), folder uploads, and degraded mode when `sonar.csv` is missing.
-- Full analysis pipeline: lift-out detection (rolling-median + MAD), GPS interpolation, per-ping sonar analysis (weed band, fish clusters, bottom hardness, noise floor), 2 m × 2 m cell aggregation, sweet-spot categorisation (Gold/Silver/Bronze/Weeded/None).
-- Outlier-trimmed colour-scale endpoints for layers (data-relative, not hardcoded).
-- IndexedDB-backed scans library: scans persist across sessions; cached `LayerBundle` results re-load instantly.
-- Web Worker hosting the pipeline with memoised stages, progress reporting, and proper cancellation (distinguishes user cancellation from crashes via a dedicated `kind: 'cancelled'` response).
-- Zustand store mediating between IndexedDB, the worker, and the UI. 200 ms threshold debounce.
-- MapLibre map with four toggleable layers (filled bathymetry contours, weed, fish-density circles, sweet-spot markers) over OSM or Esri satellite, no API keys needed. IDW grid resampling + d3-contour for the filled layers.
-- Single-file production build via `vite-plugin-singlefile` (currently ~1.1 MB, ~306 KB gzipped).
-- Node CLI for batch analysis: `npm run analyse -- <path-to-scan.zip>`.
+Download the latest [`index.html`](https://github.com/dpage/deeper-maps/releases/latest) and double-click. Or:
+
+```bash
+git clone <repo>
+cd deeper-maps
+npm install
+npm run dev               # Vite dev server
+npm run build             # → dist/index.html (single self-contained file)
+```
 
 ## Develop
 
 ```bash
-npm install
-npm run dev               # Vite dev server
 npm run test              # Vitest watch mode
 npm run test:run          # one-shot
-npm run test:coverage     # with v8 coverage; per-file thresholds 90% line/branch/function/statement
+npm run test:coverage     # 90% per-file thresholds enforced
 npm run typecheck
 npm run lint
-npm run format            # prettier --write
-npm run build             # produces dist/index.html (single self-contained file)
-npm run analyse -- 'path/to/scan.zip'   # run the full analysis pipeline against a real scan
+npm run format
+npm run e2e               # Playwright E2E (requires `npm run build` first)
+npm run analyse -- 'path/to/scan.zip'   # Node CLI: full pipeline against a real scan
 ```
 
-CI runs typecheck, lint, format check, the full test suite, and the build on every push and PR. Each green commit on `main` produces a downloadable single-file `index.html` as a workflow artifact.
+CI runs typecheck, lint, format check, the full test suite, the build, AND Playwright E2E on every push. Each green commit on `main` produces a downloadable single-file `index.html` as a workflow artifact.
 
 ## Architecture
 
-The repository follows the structure described in the design spec (`.claude/specs/2026-05-05-deeper-maps-design.md`).
+See `.claude/specs/2026-05-05-deeper-maps-design.md` for the full design.
 
 ```
-src/analysis/        Pure-functional pipeline. No React, no DOM, no MapLibre, no storage.
-  parsers/           Quest CSV parsers + zip dispatch (extension point for other devices)
-  pipeline/          Six staged pure functions: cleanBathymetry → analysePings →
-                     aggregateCells → categoriseCells → buildLayers (with IDW grid
-                     and d3-contour helpers), plus a single-slot memoisation helper
-  stats/             Rolling median, MAD, outlier-trimmed range
-  constants.ts       Default thresholds (calibrated from deeper_analysis.py)
-  types.ts           Pipeline result + option types
-src/storage/         IndexedDB schema (scans + raw files + cached results) via idb v8
-src/worker/          Web Worker hosting the pipeline; typed message protocol;
-                     stage memoisation; cancellation; progress reporting
-src/state/           Zustand store mediating IDB ↔ worker ↔ UI; 200ms threshold debounce
-src/map/             MapLibre wiring: colour ramps, four layer style specs, MapView
-                     component owning the MapLibre instance via useRef
-src/lib/             SHA-256 helpers (Web Crypto)
-src/App.tsx          Currently the developer harness; replaced by the real UI in Plan 3
+src/analysis/   Pure-functional pipeline (parser + 6 staged pipeline functions). No React/DOM/MapLibre/storage.
+src/worker/     Web Worker hosting the pipeline; memoised stage cache; cancellation support.
+src/storage/    IndexedDB wrapper (scans + raw files + cached results).
+src/state/      Zustand store; debounces threshold changes; mediates UI ↔ worker ↔ storage.
+src/map/        MapLibre instance, layer style specs, colour ramps.
+src/ui/         MUI components: layout, header, scan library, upload dialog, controls, legend, progress banner.
+src/lib/        SHA-256 helpers (Web Crypto).
 ```
-
-The `analysis/` tree has no DOM/React/MapLibre/storage dependencies, which is what makes 90% per-file coverage achievable on the most consequential code. The worker uses the same modules, exercised end-to-end via `@vitest/web-worker` integration tests.
 
 ## Reference materials
 
-The repo root contains:
-
-- `HANDOFF.md` — domain explainer for Deeper sonar data (read this first if you're new).
-- `deeper_analysis.py` — the Python reference implementation that the `analysis/` tree ports.
-- `lake_full_analysis.png` — example reference rendering (4-panel: bathymetry, weed, fish density, sweet spots).
-- `sweet_spots.csv` — sample categorised cell output for cross-reference.
-- `sample-scans/` — gitignored, local-only test scans (your real fishing data).
-
-Planning artefacts live under `.claude/specs/` and `.claude/plans/` (also gitignored).
+- `HANDOFF.md` — domain explainer for Deeper sonar data.
+- `deeper_analysis.py` — Python reference implementation that the `analysis/` tree ports byte-for-byte (validated by a snapshot test).
+- `lake_full_analysis.png` — example output rendering.
+- `sweet_spots.csv` — sample categorised cell output.
+- `TODO.md` — features deferred to v2.
+- `sample-scans/` — gitignored, your local scans.
 
 ## Licence
 
