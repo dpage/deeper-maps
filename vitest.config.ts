@@ -16,9 +16,6 @@ export default defineConfig({
         // Bootstrap entry; createRoot side-effects + worker instantiation are
         // integration-tested by Playwright in Plan 3, not by unit tests.
         'src/main.tsx',
-        // TODO: remove once App.tsx becomes the real composition root in Plan 2,
-        // at which point it gets component tests via React Testing Library.
-        'src/App.tsx',
         // Worker entry: instantiated only via ?worker&inline; integration-tested via
         // @vitest/web-worker rather than unit-tested directly. Coverage of internal
         // pipeline stages comes from the per-stage unit tests in src/analysis/.
