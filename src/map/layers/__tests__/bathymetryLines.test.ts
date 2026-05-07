@@ -12,7 +12,11 @@ describe('buildBathymetryLinesStyle', () => {
   });
 
   it('produces a line layer with a Viridis-ramp line-color interpolated by level', () => {
-    const style = buildBathymetryLinesStyle({ min: 1.0, max: 3.0 });
+    const style = buildBathymetryLinesStyle({
+      min: 1.0,
+      max: 3.0,
+      levels: [1.0, 1.5, 2.0, 2.5, 3.0],
+    });
     expect(style.layer.type).toBe('line');
     expect((style.layer as { source: string }).source).toBe(BATHYMETRY_LINES_SOURCE_ID);
     const paint = style.layer.paint as Record<string, unknown>;
@@ -24,21 +28,29 @@ describe('buildBathymetryLinesStyle', () => {
   });
 
   it('defaults to hidden — visibility is managed by the MapView visibility effect', () => {
-    const style = buildBathymetryLinesStyle({ min: 1.0, max: 3.0 });
+    const style = buildBathymetryLinesStyle({
+      min: 1.0,
+      max: 3.0,
+      levels: [1.0, 1.5, 2.0, 2.5, 3.0],
+    });
     const layout = (style.layer as { layout?: { visibility?: string } }).layout;
     expect(layout?.visibility).toBe('none');
   });
 
   it('starts with an empty FeatureCollection — data is pushed via setData()', () => {
-    const style = buildBathymetryLinesStyle({ min: 1.0, max: 3.0 });
+    const style = buildBathymetryLinesStyle({
+      min: 1.0,
+      max: 3.0,
+      levels: [1.0, 1.5, 2.0, 2.5, 3.0],
+    });
     expect(style.source.type).toBe('geojson');
     expect(style.source.data.features).toHaveLength(0);
   });
 
-  it('clamps the colour-stop span when scale is degenerate (min === max)', () => {
-    // Sanity: a degenerate scale shouldn't blow up. The interpolate
-    // expression should still produce finite stops.
-    const style = buildBathymetryLinesStyle({ min: 1.5, max: 1.5 });
+  it('handles a degenerate empty-levels scale without crashing', () => {
+    // Sanity: an empty levels array shouldn't blow up. The interpolate
+    // expression should still produce finite stops via the helper's fallback.
+    const style = buildBathymetryLinesStyle({ min: 1.5, max: 1.5, levels: [] });
     const paint = style.layer.paint as Record<string, unknown>;
     const lineColor = JSON.stringify(paint['line-color']);
     expect(lineColor).toContain('interpolate');

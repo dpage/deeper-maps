@@ -1,5 +1,5 @@
 import type { Feature, FeatureCollection, MultiLineString, MultiPolygon, Point } from 'geojson';
-import { trimmedRange } from '../stats/colorScale';
+import { computeContourLevels, trimmedRange } from '../stats/colorScale';
 import type {
   CategorisedCells,
   CleanBath,
@@ -8,14 +8,15 @@ import type {
   ScaleRange,
   ScanCategory,
 } from '../types';
-import { buildContourFeatures, computeContourLevels } from './contours';
+import { buildContourFeatures } from './contours';
 import { buildIdwGrid } from './grid';
 
-const FALLBACK_SCALE: ScaleRange = { min: 0, max: 1 };
+const FALLBACK_SCALE = { min: 0, max: 1 } as const;
 const BATHYMETRY_GRID_M = 1;
 const WEED_GRID_M = 2;
 const BATHYMETRY_CONTOUR_LEVELS = 12;
 const WEED_CONTOUR_LEVELS = 8;
+const FISH_DENSITY_COLOR_STOPS = 9;
 const IDW_K_NEAREST = 4;
 const IDW_RADIUS_M = 5;
 const METRES_PER_DEG_LAT = 111000;
@@ -33,9 +34,13 @@ function emptyFc(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
 
-function safeRange(values: readonly number[], trimPct: number): ScaleRange {
-  if (values.length === 0) return FALLBACK_SCALE;
-  return trimmedRange(values, trimPct);
+function safeScale(values: readonly number[], trimPct: number, n: number): ScaleRange {
+  if (values.length === 0) {
+    return { min: FALLBACK_SCALE.min, max: FALLBACK_SCALE.max, levels: [] };
+  }
+  const { min, max } = trimmedRange(values, trimPct);
+  const levels = computeContourLevels(values, n);
+  return { min, max, levels };
 }
 
 interface ProjectionAnchor {
@@ -106,8 +111,7 @@ function buildBathymetryContours(clean: CleanBath, scale: ScaleRange): FeatureCo
     maxY,
   });
 
-  const levels = computeContourLevels(scale, BATHYMETRY_CONTOUR_LEVELS);
-  const fc = buildContourFeatures(grid, levels);
+  const fc = buildContourFeatures(grid, scale.levels);
 
   // Reproject from grid (metres) coordinates to [lon, lat].
   const features: Feature<MultiPolygon, { level: number }>[] = fc.features.map((f) => ({
@@ -160,8 +164,7 @@ function buildWeedContours(cells: CategorisedCells, scale: ScaleRange): FeatureC
     maxY,
   });
 
-  const levels = computeContourLevels(scale, WEED_CONTOUR_LEVELS);
-  const fc = buildContourFeatures(grid, levels);
+  const fc = buildContourFeatures(grid, scale.levels);
 
   const features: Feature<MultiPolygon, { level: number }>[] = fc.features.map((f) => ({
     type: 'Feature' as const,
@@ -274,9 +277,9 @@ export function buildLayers(
   const fishRates = cells.rows.map((c) => c.fish_rate);
 
   const scales = {
-    depth: safeRange(depths, colorScale.outlierTrimPct),
-    weed: safeRange(weeds, colorScale.outlierTrimPct),
-    fishRate: safeRange(fishRates, colorScale.outlierTrimPct),
+    depth: safeScale(depths, colorScale.outlierTrimPct, BATHYMETRY_CONTOUR_LEVELS),
+    weed: safeScale(weeds, colorScale.outlierTrimPct, WEED_CONTOUR_LEVELS),
+    fishRate: safeScale(fishRates, colorScale.outlierTrimPct, FISH_DENSITY_COLOR_STOPS),
   };
 
   const weed = buildWeedContours(cells, scales.weed);

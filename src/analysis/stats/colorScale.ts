@@ -1,5 +1,3 @@
-import type { ScaleRange } from '../types';
-
 /**
  * Outlier-trimmed min/max for use as a colour-scale endpoint.
  *
@@ -12,7 +10,10 @@ import type { ScaleRange } from '../types';
  * - Always guarantees `max - min >= 1e-6` so MapLibre data expressions can
  *   safely divide. See spec §6.5.
  */
-export function trimmedRange(values: readonly number[], trimPct: number): ScaleRange {
+export function trimmedRange(
+  values: readonly number[],
+  trimPct: number,
+): { min: number; max: number } {
   if (values.length === 0) throw new Error('trimmedRange: empty input');
 
   const pct = Math.max(0, Math.min(49, trimPct));
@@ -39,4 +40,38 @@ export function trimmedRange(values: readonly number[], trimPct: number): ScaleR
 
   if (max - min < 1e-6) max = min + 1e-6;
   return { min, max };
+}
+
+/**
+ * Compute N contour level thresholds at evenly-spaced QUANTILE positions of
+ * the input data. With skewed data (e.g. lake depths that cluster around one
+ * value, or weed thickness near zero), this produces level breaks where the
+ * data actually lives — denser bands in the dense region — instead of the
+ * naive linear-min-to-max spacing which wastes thresholds on empty range.
+ *
+ * Output is strictly increasing (epsilons inserted on ties so MapLibre's
+ * `interpolate` expression accepts the stops). Returns N values; degenerate
+ * inputs (empty array, fewer than 2 distinct values) fall back to evenly-
+ * spaced values in [0, 1] or [min, min + epsilons].
+ */
+export function computeContourLevels(values: readonly number[], n: number): number[] {
+  if (n < 2) return values.length > 0 ? [values[0]!] : [0];
+  if (values.length === 0) {
+    return Array.from({ length: n }, (_, i) => i / (n - 1));
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const N = sorted.length;
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const idx = Math.min(Math.round(t * (N - 1)), N - 1);
+    out.push(sorted[idx]!);
+  }
+  // Enforce strictly increasing (MapLibre interpolate requires it).
+  for (let i = 1; i < out.length; i++) {
+    if (out[i]! <= out[i - 1]!) {
+      out[i] = out[i - 1]! + 1e-9;
+    }
+  }
+  return out;
 }

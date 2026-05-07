@@ -13,9 +13,9 @@ function emptyBundle(): LayerBundle {
     fishDensity: { type: 'FeatureCollection', features: [] },
     sweetSpots: { type: 'FeatureCollection', features: [] },
     scales: {
-      depth: { min: 0, max: 1 },
-      weed: { min: 0, max: 1 },
-      fishRate: { min: 0, max: 1 },
+      depth: { min: 0, max: 1, levels: [] },
+      weed: { min: 0, max: 1, levels: [] },
+      fishRate: { min: 0, max: 1, levels: [] },
     },
     bounds: null,
   };

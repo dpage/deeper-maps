@@ -1,23 +1,6 @@
 import { contours } from 'd3-contour';
 import type { Feature, FeatureCollection, MultiPolygon } from 'geojson';
-import type { ScaleRange } from '../types';
 import type { IdwGrid } from './grid';
-
-/**
- * Evenly-spaced contour levels between min and max.
- * For a degenerate range (min == max), returns N identical values so callers
- * can still produce a (possibly empty) FeatureCollection without crashing.
- */
-export function computeContourLevels(range: ScaleRange, n: number): number[] {
-  const out: number[] = [];
-  if (range.max === range.min) {
-    for (let i = 0; i < n; i++) out.push(range.min);
-    return out;
-  }
-  const step = (range.max - range.min) / (n - 1);
-  for (let i = 0; i < n; i++) out.push(range.min + i * step);
-  return out;
-}
 
 interface D3MultiPolygon {
   type: 'MultiPolygon';
@@ -47,10 +30,12 @@ export function buildContourFeatures(
       type: 'MultiPolygon' as const,
       coordinates: p.coordinates.map((poly) =>
         poly.map((ring) =>
-          ring.map(([gx, gy]) => [
-            grid.origin.x + (gx ?? 0) * grid.cellSize,
-            grid.origin.y + (gy ?? 0) * grid.cellSize,
-          ]),
+          ring.map((pt) => {
+            // d3-contour always emits 2D points, but the @types/d3-contour
+            // signature widens to number[]; assert the pair we know we have.
+            const [gx, gy] = pt as [number, number];
+            return [grid.origin.x + gx * grid.cellSize, grid.origin.y + gy * grid.cellSize];
+          }),
         ),
       ),
     },

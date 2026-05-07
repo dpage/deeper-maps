@@ -12,8 +12,9 @@ import type { FeatureCollection } from 'geojson';
  *   2 — adds `bounds` field for map auto-framing (commit 5565bbf).
  *   3 — adds `weedLines` field for line-style weed-over-bathymetry rendering.
  *   4 — replace weedLines with bathymetryLines for line-style bathymetry-over-weed rendering.
+ *   5 — adds quantile-based `levels` to LayerScales for non-linear colour mapping.
  */
-export const CURRENT_BUNDLE_VERSION = 4;
+export const CURRENT_BUNDLE_VERSION = 5;
 
 export interface LiftoutOptions {
   hardThresholdM: number;
@@ -136,6 +137,14 @@ export interface CategorisedCells {
 export interface ScaleRange {
   min: number;
   max: number;
+  /**
+   * Quantile-based level values used both for contour thresholds and for
+   * MapLibre colour interpolation stops. Strictly increasing. Length matches
+   * the contour count for that layer (e.g. 12 for bathymetry, 8 for weed).
+   * For non-contour layers (fish density), this is the colour-stop schedule
+   * for the circle-color interpolate expression.
+   */
+  levels: number[];
 }
 
 export interface LayerScales {

@@ -49,9 +49,9 @@ function emptyBundle(): LayerBundle {
     fishDensity: { type: 'FeatureCollection', features: [] },
     sweetSpots: { type: 'FeatureCollection', features: [] },
     scales: {
-      depth: { min: 0, max: 1 },
-      weed: { min: 0, max: 1 },
-      fishRate: { min: 0, max: 1 },
+      depth: { min: 0, max: 1, levels: [] },
+      weed: { min: 0, max: 1, levels: [] },
+      fishRate: { min: 0, max: 1, levels: [] },
     },
     bounds: null,
   };
@@ -238,9 +238,9 @@ describe('useDeeperMapsStore', () => {
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
         scales: {
-          depth: { min: 1, max: 2 },
-          weed: { min: 0, max: 1 },
-          fishRate: { min: 0, max: 1 },
+          depth: { min: 1, max: 2, levels: [] },
+          weed: { min: 0, max: 1, levels: [] },
+          fishRate: { min: 0, max: 1, levels: [] },
         },
         bounds: null,
       },
@@ -554,9 +554,9 @@ describe('useDeeperMapsStore — worker message routing', () => {
       fishDensity: { type: 'FeatureCollection', features: [] },
       sweetSpots: { type: 'FeatureCollection', features: [] },
       scales: {
-        depth: { min: 99, max: 100 },
-        weed: { min: 0, max: 1 },
-        fishRate: { min: 0, max: 1 },
+        depth: { min: 99, max: 100, levels: [] },
+        weed: { min: 0, max: 1, levels: [] },
+        fishRate: { min: 0, max: 1, levels: [] },
       },
       bounds: null,
     };

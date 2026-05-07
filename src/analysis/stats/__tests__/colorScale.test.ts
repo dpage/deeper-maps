@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { trimmedRange } from '../colorScale';
+import { computeContourLevels, trimmedRange } from '../colorScale';
 
 describe('trimmedRange', () => {
   it('returns the literal min/max when trimPct is 0', () => {
@@ -42,5 +42,55 @@ describe('trimmedRange', () => {
     const r = trimmedRange([1, 5, 10], 33);
     expect(r.min).toBe(1);
     expect(r.max).toBe(10);
+  });
+});
+
+describe('computeContourLevels', () => {
+  it('produces 12 levels for a uniform [0,1] distribution evenly-spaced', () => {
+    // For uniform input quantiles ARE linear, so the result should be
+    // approximately [0, 1/11, 2/11, …, 1].
+    const values = Array.from({ length: 1000 }, (_, i) => i / 999);
+    const levels = computeContourLevels(values, 12);
+    expect(levels).toHaveLength(12);
+    for (let i = 0; i < 12; i++) {
+      const expected = i / 11;
+      expect(levels[i]).toBeCloseTo(expected, 2);
+    }
+  });
+
+  it('concentrates levels in the dense region for skewed data', () => {
+    // 90% of values in [0, 0.1], 10% in [0.1, 1.0].
+    const dense = Array.from({ length: 900 }, (_, i) => (i / 899) * 0.1);
+    const sparse = Array.from({ length: 100 }, (_, i) => 0.1 + (i / 99) * 0.9);
+    const values = [...dense, ...sparse];
+    const levels = computeContourLevels(values, 10);
+    // Most levels should fall in [0, 0.1] (the dense region).
+    const inDense = levels.filter((l) => l <= 0.1).length;
+    expect(inDense).toBeGreaterThan(levels.length / 2);
+  });
+
+  it('guarantees strictly increasing output for tied values', () => {
+    // Half zeros, half ones — naive quantile would produce [0, 0, 1, 1].
+    const values = [0, 0, 0, 0, 1, 1, 1, 1];
+    const levels = computeContourLevels(values, 4);
+    expect(levels).toHaveLength(4);
+    for (let i = 1; i < levels.length; i++) {
+      expect(levels[i]!).toBeGreaterThan(levels[i - 1]!);
+    }
+  });
+
+  it('handles empty input with a fallback evenly-spaced [0,1]', () => {
+    const levels = computeContourLevels([], 5);
+    expect(levels).toHaveLength(5);
+    expect(levels[0]).toBe(0);
+    expect(levels[levels.length - 1]).toBe(1);
+    for (let i = 1; i < levels.length; i++) {
+      expect(levels[i]!).toBeGreaterThan(levels[i - 1]!);
+    }
+  });
+
+  it('returns a single value for n=1', () => {
+    expect(computeContourLevels([3, 7, 11], 1)).toEqual([3]);
+    expect(computeContourLevels([], 1)).toEqual([0]);
   });
 });

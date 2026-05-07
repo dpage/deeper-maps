@@ -8,7 +8,7 @@ describe('buildBathymetryStyle', () => {
   });
 
   it('returns a fill layer with an interpolate paint expression bound to scale', () => {
-    const style = buildBathymetryStyle({ min: 1.0, max: 3.0 });
+    const style = buildBathymetryStyle({ min: 1.0, max: 3.0, levels: [1.0, 2.0, 3.0] });
     expect(style.layer.type).toBe('fill');
     expect((style.layer as { source: string }).source).toBe(BATHYMETRY_SOURCE_ID);
     const fillColor = (style.layer.paint as Record<string, unknown>)['fill-color'];
@@ -20,8 +20,8 @@ describe('buildBathymetryStyle', () => {
     }
   });
 
-  it('ignores degenerate scale (min == max) without crashing', () => {
-    const style = buildBathymetryStyle({ min: 1, max: 1 });
+  it('ignores degenerate scale (empty levels) without crashing', () => {
+    const style = buildBathymetryStyle({ min: 1, max: 1, levels: [] });
     expect(style).toBeDefined();
   });
 });

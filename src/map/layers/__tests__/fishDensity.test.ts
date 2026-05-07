@@ -8,7 +8,7 @@ import {
 
 describe('buildFishDensityStyle', () => {
   it('returns a symbol layer with fish icons sized by n_pings and tinted by fish_rate', () => {
-    const style = buildFishDensityStyle({ min: 0, max: 0.5 });
+    const style = buildFishDensityStyle({ min: 0, max: 0.5, levels: [0, 0.1, 0.2, 0.3, 0.5] });
     expect(FISH_DENSITY_SOURCE_ID).toBe('fish-density');
     expect(FISH_DENSITY_LAYER_ID).toBe('fish-density-circles');
     expect(FISH_ICON_NAME).toBe('fish-icon');

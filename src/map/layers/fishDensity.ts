@@ -1,5 +1,5 @@
 import type { ScaleRange } from '../../analysis/types';
-import { ylOrRdRamp } from '../colors';
+import { quantileColorStops, ylOrRdRamp } from '../colors';
 import type { LayerStyle } from './bathymetry';
 import type maplibregl from 'maplibre-gl';
 
@@ -8,8 +8,7 @@ export const FISH_DENSITY_LAYER_ID = 'fish-density-circles';
 export const FISH_ICON_NAME = 'fish-icon';
 
 export function buildFishDensityStyle(scale: ScaleRange): LayerStyle {
-  const span = Math.max(scale.max - scale.min, 1e-6);
-  const colorStops = ylOrRdRamp.flatMap(([t, hex]) => [scale.min + t * span, hex]);
+  const colorStops = quantileColorStops(scale.levels, ylOrRdRamp);
 
   return {
     source: {

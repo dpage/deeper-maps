@@ -160,7 +160,7 @@ export function MapView(): JSX.Element {
       map.addImage(FISH_ICON_NAME, buildFishIcon(), { sdf: true });
     }
 
-    const fallback = { min: 0, max: 1 };
+    const fallback = { min: 0, max: 1, levels: [] };
     // Layer order matters — `addLayer` appends, and later layers render on
     // top of earlier ones. Bath-lines sit OVER weed-fill so the depth
     // contour lines are visible against the green weed colour, but UNDER

@@ -1,6 +1,6 @@
 import type maplibregl from 'maplibre-gl';
 import type { ScaleRange } from '../../analysis/types';
-import { viridisRamp } from '../colors';
+import { quantileColorStops, viridisRamp } from '../colors';
 import type { LayerStyle } from './bathymetry';
 
 export const BATHYMETRY_LINES_SOURCE_ID = 'bathymetry-lines';
@@ -18,8 +18,7 @@ export const BATHYMETRY_LINES_LAYER_ID = 'bathymetry-lines-layer';
  * bath-fill / bath-lines toggle conditionally based on weed visibility.
  */
 export function buildBathymetryLinesStyle(scale: ScaleRange): LayerStyle {
-  const span = Math.max(scale.max - scale.min, 1e-6);
-  const colorStops = viridisRamp.flatMap(([t, hex]) => [scale.min + t * span, hex]);
+  const colorStops = quantileColorStops(scale.levels, viridisRamp);
 
   return {
     source: {

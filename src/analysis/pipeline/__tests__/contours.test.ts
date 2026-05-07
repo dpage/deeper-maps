@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildContourFeatures, computeContourLevels } from '../contours';
+import { buildContourFeatures } from '../contours';
 import type { IdwGrid } from '../grid';
 
 function flatGrid(width: number, height: number, value: number): IdwGrid {
@@ -13,19 +13,6 @@ function rampGrid(width: number, height: number): IdwGrid {
   for (let i = 0; i < values.length; i++) values[i] = i / values.length;
   return { width, height, cellSize: 1, origin: { x: 0, y: 0 }, values };
 }
-
-describe('computeContourLevels', () => {
-  it('returns N evenly-spaced thresholds between min and max', () => {
-    const levels = computeContourLevels({ min: 0, max: 10 }, 5);
-    expect(levels).toEqual([0, 2.5, 5, 7.5, 10]);
-  });
-
-  it('handles a degenerate range', () => {
-    const levels = computeContourLevels({ min: 1, max: 1 }, 3);
-    // All identical; pick three identical values.
-    expect(levels).toEqual([1, 1, 1]);
-  });
-});
 
 describe('buildContourFeatures', () => {
   it('produces a MultiPolygon feature per level', () => {

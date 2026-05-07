@@ -3,7 +3,7 @@ import { buildWeedStyle, WEED_LAYER_ID, WEED_SOURCE_ID } from '../weed';
 
 describe('buildWeedStyle', () => {
   it('uses Greens ramp keyed off the level property', () => {
-    const style = buildWeedStyle({ min: 0, max: 0.3 });
+    const style = buildWeedStyle({ min: 0, max: 0.3, levels: [0, 0.1, 0.2, 0.3] });
     expect(WEED_SOURCE_ID).toBe('weed');
     expect(WEED_LAYER_ID).toBe('weed-fill');
     expect(style.layer.type).toBe('fill');

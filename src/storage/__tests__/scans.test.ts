@@ -114,9 +114,9 @@ describe('scans CRUD', () => {
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
         scales: {
-          depth: { min: 0, max: 1 },
-          weed: { min: 0, max: 1 },
-          fishRate: { min: 0, max: 1 },
+          depth: { min: 0, max: 1, levels: [] },
+          weed: { min: 0, max: 1, levels: [] },
+          fishRate: { min: 0, max: 1, levels: [] },
         },
         bounds: null,
       },
@@ -140,9 +140,9 @@ describe('scans CRUD', () => {
       fishDensity: { type: 'FeatureCollection' as const, features: [] },
       sweetSpots: { type: 'FeatureCollection' as const, features: [] },
       scales: {
-        depth: { min: 0.5, max: 2.5 },
-        weed: { min: 0, max: 0.3 },
-        fishRate: { min: 0, max: 0.5 },
+        depth: { min: 0.5, max: 2.5, levels: [] },
+        weed: { min: 0, max: 0.3, levels: [] },
+        fishRate: { min: 0, max: 0.5, levels: [] },
       },
       bounds: null,
     };

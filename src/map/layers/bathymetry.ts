@@ -1,5 +1,5 @@
 import type { ScaleRange } from '../../analysis/types';
-import { viridisRamp } from '../colors';
+import { quantileColorStops, viridisRamp } from '../colors';
 
 export const BATHYMETRY_SOURCE_ID = 'bathymetry';
 export const BATHYMETRY_LAYER_ID = 'bathymetry-fill';
@@ -12,9 +12,10 @@ export interface LayerStyle {
 import type maplibregl from 'maplibre-gl';
 
 export function buildBathymetryStyle(scale: ScaleRange): LayerStyle {
-  // Build interpolate stops for fill-color: each ramp stop normalised to scale range.
-  const span = Math.max(scale.max - scale.min, 1e-6);
-  const colorStops = viridisRamp.flatMap(([t, hex]) => [scale.min + t * span, hex]);
+  // Build interpolate stops for fill-color from the quantile-based level
+  // schedule, so dense regions of the depth distribution receive a wider
+  // colour range than the linear-min-to-max mapping would give.
+  const colorStops = quantileColorStops(scale.levels, viridisRamp);
 
   return {
     source: {
