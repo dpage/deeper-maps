@@ -45,7 +45,7 @@ function emptyBundle(): LayerBundle {
   return {
     bathymetry: { type: 'FeatureCollection', features: [] },
     weed: { type: 'FeatureCollection', features: [] },
-    weedLines: { type: 'FeatureCollection', features: [] },
+    bathymetryLines: { type: 'FeatureCollection', features: [] },
     fishDensity: { type: 'FeatureCollection', features: [] },
     sweetSpots: { type: 'FeatureCollection', features: [] },
     scales: {
@@ -234,7 +234,7 @@ describe('useDeeperMapsStore', () => {
       bundle: {
         bathymetry: { type: 'FeatureCollection', features: [] },
         weed: { type: 'FeatureCollection', features: [] },
-        weedLines: { type: 'FeatureCollection', features: [] },
+        bathymetryLines: { type: 'FeatureCollection', features: [] },
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
         scales: {
@@ -550,7 +550,7 @@ describe('useDeeperMapsStore — worker message routing', () => {
     const staleBundle: LayerBundle = {
       bathymetry: { type: 'FeatureCollection', features: [] },
       weed: { type: 'FeatureCollection', features: [] },
-      weedLines: { type: 'FeatureCollection', features: [] },
+      bathymetryLines: { type: 'FeatureCollection', features: [] },
       fishDensity: { type: 'FeatureCollection', features: [] },
       sweetSpots: { type: 'FeatureCollection', features: [] },
       scales: {

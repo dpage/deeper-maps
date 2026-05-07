@@ -11,7 +11,7 @@ describe('buildLayers — empty data', () => {
     const lb = buildLayers(emptyClean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
     expect(lb.bathymetry.features).toHaveLength(0);
     expect(lb.weed.features).toHaveLength(0);
-    expect(lb.weedLines.features).toHaveLength(0);
+    expect(lb.bathymetryLines.features).toHaveLength(0);
     expect(lb.fishDensity.features).toHaveLength(0);
     expect(lb.sweetSpots.features).toHaveLength(0);
     expect(lb.scales.depth.max - lb.scales.depth.min).toBeGreaterThan(0);
@@ -180,52 +180,44 @@ describe('buildLayers — sweet spot markers', () => {
   });
 });
 
-describe('buildLayers — weed line contours', () => {
-  it('produces a MultiLineString feature for each weed MultiPolygon contour', () => {
-    // 10x10 cell grid with a smooth mean_weed gradient so the contour
-    // generator produces a non-trivial set of polygons.
-    const rows = [];
-    for (let i = 0; i < 100; i++) {
-      const ix = i % 10;
-      const iy = Math.floor(i / 10);
-      rows.push({
-        cx: ix * 2,
-        cy: iy * 2,
-        lat: 51.7 + iy * 0.0001,
-        lon: -1.43 + ix * 0.0001,
-        n_pings: 5,
-        mean_depth: 1.5,
-        mean_weed: (ix + iy) * 0.02,
-        fish_rate: 0,
-        bottom_hardness: 1000,
-        category: 'none' as const,
-      });
-    }
-    const cells: CategorisedCells = {
-      cellSizeM: 2,
-      origin: { lat: 51.7, lon: -1.43 },
-      rows,
+describe('buildLayers — bathymetry line contours', () => {
+  it('produces a MultiLineString feature for each bathymetry MultiPolygon contour', () => {
+    // 10x10 ping grid with a smooth depth gradient so the contour generator
+    // produces a non-trivial set of polygons.
+    const clean: CleanBath = {
+      rows: Array.from({ length: 100 }, (_, i) => ({
+        ts_ms: i * 100,
+        lat: 51.7 + (i % 10) * 0.0001,
+        lon: -1.43 + Math.floor(i / 10) * 0.0001,
+        depth_m: 1 + ((i % 10) + Math.floor(i / 10)) * 0.1,
+        session_id: 0,
+        file_id: 0,
+      })),
+      sessions: [],
+      liftoutsRemoved: 0,
     };
-    const lb = buildLayers(emptyClean, cells, { outlierTrimPct: 0 });
+    const lb = buildLayers(clean, emptyCells, { outlierTrimPct: 0 });
 
-    // Some weed contours should exist for this gradient.
-    expect(lb.weed.features.length).toBeGreaterThan(0);
-    // Every weed polygon contour produces a corresponding line contour.
-    expect(lb.weedLines.features).toHaveLength(lb.weed.features.length);
+    // Some bathymetry contours should exist for this gradient.
+    expect(lb.bathymetry.features.length).toBeGreaterThan(0);
+    // Every bathymetry polygon contour produces a corresponding line contour.
+    expect(lb.bathymetryLines.features).toHaveLength(lb.bathymetry.features.length);
     // The line contours are MultiLineStrings keyed off the same `level`.
-    for (const f of lb.weedLines.features) {
+    for (const f of lb.bathymetryLines.features) {
       expect(f.geometry.type).toBe('MultiLineString');
       expect(typeof f.properties?.level).toBe('number');
     }
-    // Each level present in `weed` is also present in `weedLines`.
-    const weedLevels = new Set(lb.weed.features.map((f) => f.properties?.level as number));
-    const lineLevels = new Set(lb.weedLines.features.map((f) => f.properties?.level as number));
-    expect(lineLevels).toEqual(weedLevels);
+    // Each level present in `bathymetry` is also present in `bathymetryLines`.
+    const bathLevels = new Set(lb.bathymetry.features.map((f) => f.properties?.level as number));
+    const lineLevels = new Set(
+      lb.bathymetryLines.features.map((f) => f.properties?.level as number),
+    );
+    expect(lineLevels).toEqual(bathLevels);
   });
 
-  it('returns empty weedLines when there are no weed polygons', () => {
+  it('returns empty bathymetryLines when there are no bathymetry polygons', () => {
     const lb = buildLayers(emptyClean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
-    expect(lb.weed.features).toHaveLength(0);
-    expect(lb.weedLines.features).toHaveLength(0);
+    expect(lb.bathymetry.features).toHaveLength(0);
+    expect(lb.bathymetryLines.features).toHaveLength(0);
   });
 });

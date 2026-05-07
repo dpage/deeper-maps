@@ -79,7 +79,7 @@ describe('analysis types', () => {
     const lb: LayerBundle = {
       bathymetry: { type: 'FeatureCollection', features: [] },
       weed: { type: 'FeatureCollection', features: [] },
-      weedLines: { type: 'FeatureCollection', features: [] },
+      bathymetryLines: { type: 'FeatureCollection', features: [] },
       fishDensity: { type: 'FeatureCollection', features: [] },
       sweetSpots: { type: 'FeatureCollection', features: [] },
       scales: {

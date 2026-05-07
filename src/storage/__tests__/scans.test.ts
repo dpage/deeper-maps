@@ -110,7 +110,7 @@ describe('scans CRUD', () => {
       bundle: {
         bathymetry: { type: 'FeatureCollection', features: [] },
         weed: { type: 'FeatureCollection', features: [] },
-        weedLines: { type: 'FeatureCollection', features: [] },
+        bathymetryLines: { type: 'FeatureCollection', features: [] },
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
         scales: {
@@ -136,7 +136,7 @@ describe('scans CRUD', () => {
     const bundle = {
       bathymetry: { type: 'FeatureCollection' as const, features: [] },
       weed: { type: 'FeatureCollection' as const, features: [] },
-      weedLines: { type: 'FeatureCollection' as const, features: [] },
+      bathymetryLines: { type: 'FeatureCollection' as const, features: [] },
       fishDensity: { type: 'FeatureCollection' as const, features: [] },
       sweetSpots: { type: 'FeatureCollection' as const, features: [] },
       scales: {

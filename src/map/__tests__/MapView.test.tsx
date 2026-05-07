@@ -31,7 +31,7 @@ function bundleWith(bounds: LayerBundle['bounds']): LayerBundle {
   return {
     bathymetry: { type: 'FeatureCollection', features: [] },
     weed: { type: 'FeatureCollection', features: [] },
-    weedLines: { type: 'FeatureCollection', features: [] },
+    bathymetryLines: { type: 'FeatureCollection', features: [] },
     fishDensity: { type: 'FeatureCollection', features: [] },
     sweetSpots: { type: 'FeatureCollection', features: [] },
     scales: {
@@ -117,7 +117,7 @@ describe('<MapView/>', () => {
     const sourceIds = mock.__setDataCalls.map((c) => c.sourceId);
     expect(sourceIds).toContain('bathymetry');
     expect(sourceIds).toContain('weed');
-    expect(sourceIds).toContain('weed-lines');
+    expect(sourceIds).toContain('bathymetry-lines');
     expect(sourceIds).toContain('fish-density');
     expect(sourceIds).toContain('sweet-spots');
   });
@@ -258,7 +258,7 @@ describe('<MapView/>', () => {
     expect(mock.__fitBoundsCalls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('weed visibility: weed + bathymetry shows weed-lines, hides weed-fill', async () => {
+  it('layer visibility: bath + weed both on shows bath-lines, hides bath-fill, weed-fill on', async () => {
     const mock = await import('./__mocks__/maplibre-gl');
     mock.__resetAll();
 
@@ -275,18 +275,23 @@ describe('<MapView/>', () => {
     await new Promise((r) => setTimeout(r, 5));
 
     expect(mock.__setLayoutPropertyCalls).toContainEqual({
-      layerId: 'weed-fill',
+      layerId: 'bathymetry-fill',
       name: 'visibility',
       value: 'none',
     });
     expect(mock.__setLayoutPropertyCalls).toContainEqual({
-      layerId: 'weed-lines-layer',
+      layerId: 'bathymetry-lines-layer',
+      name: 'visibility',
+      value: 'visible',
+    });
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'weed-fill',
       name: 'visibility',
       value: 'visible',
     });
   });
 
-  it('weed visibility: weed only (no bathymetry) shows weed-fill, hides weed-lines', async () => {
+  it('layer visibility: only weed on shows weed-fill, hides bath-fill and bath-lines', async () => {
     const mock = await import('./__mocks__/maplibre-gl');
     mock.__resetAll();
 
@@ -308,17 +313,22 @@ describe('<MapView/>', () => {
       value: 'visible',
     });
     expect(mock.__setLayoutPropertyCalls).toContainEqual({
-      layerId: 'weed-lines-layer',
+      layerId: 'bathymetry-fill',
+      name: 'visibility',
+      value: 'none',
+    });
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'bathymetry-lines-layer',
       name: 'visibility',
       value: 'none',
     });
   });
 
-  it('weed visibility: weed off hides both weed-fill and weed-lines', async () => {
+  it('layer visibility: only bath on shows bath-fill, hides weed-fill and bath-lines', async () => {
     const mock = await import('./__mocks__/maplibre-gl');
     mock.__resetAll();
 
-    const scan = makeScan('88888888-8888-8888-8888-888888888888', {
+    const scan = makeScan('99999999-9999-9999-9999-999999999999', {
       layerVisibility: { bathymetry: true, weed: false, fishDensity: false, sweetSpots: false },
     });
     useDeeperMapsStore.setState({
@@ -331,12 +341,50 @@ describe('<MapView/>', () => {
     await new Promise((r) => setTimeout(r, 5));
 
     expect(mock.__setLayoutPropertyCalls).toContainEqual({
-      layerId: 'weed-fill',
+      layerId: 'bathymetry-fill',
+      name: 'visibility',
+      value: 'visible',
+    });
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'bathymetry-lines-layer',
       name: 'visibility',
       value: 'none',
     });
     expect(mock.__setLayoutPropertyCalls).toContainEqual({
-      layerId: 'weed-lines-layer',
+      layerId: 'weed-fill',
+      name: 'visibility',
+      value: 'none',
+    });
+  });
+
+  it('layer visibility: bath off and weed off hides bath-fill, bath-lines and weed-fill', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const scan = makeScan('88888888-8888-8888-8888-888888888888', {
+      layerVisibility: { bathymetry: false, weed: false, fishDensity: false, sweetSpots: false },
+    });
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      layerBundle: bundleWith(null),
+    });
+
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'bathymetry-fill',
+      name: 'visibility',
+      value: 'none',
+    });
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'bathymetry-lines-layer',
+      name: 'visibility',
+      value: 'none',
+    });
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'weed-fill',
       name: 'visibility',
       value: 'none',
     });

@@ -183,11 +183,11 @@ function buildWeedContours(cells: CategorisedCells, scale: ScaleRange): FeatureC
 }
 
 /**
- * Convert a `MultiPolygon` weed FeatureCollection into a `MultiLineString`
+ * Convert a `MultiPolygon` FeatureCollection into a `MultiLineString`
  * FeatureCollection by extracting each ring of every polygon as a single
- * line. Used to render weed contours as thin lines when bathymetry is also
+ * line. Used to render bathymetry contours as thin lines when weed is also
  * visible — keeps the contour shape and colour ramp without an opaque fill
- * blocking the bathymetry colours underneath.
+ * blocking the weed colours underneath.
  */
 function polygonsToLines(fc: FeatureCollection): FeatureCollection {
   const features: Feature<MultiLineString, { level: number }>[] = [];
@@ -280,12 +280,13 @@ export function buildLayers(
   };
 
   const weed = buildWeedContours(cells, scales.weed);
-  const weedLines = polygonsToLines(weed);
+  const bathymetry = buildBathymetryContours(clean, scales.depth);
+  const bathymetryLines = polygonsToLines(bathymetry);
 
   return {
-    bathymetry: buildBathymetryContours(clean, scales.depth),
+    bathymetry,
     weed,
-    weedLines,
+    bathymetryLines,
     fishDensity: buildFishDensity(cells),
     sweetSpots: buildSweetSpots(cells),
     scales,
