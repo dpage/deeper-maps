@@ -9,7 +9,7 @@ import {
   saveScanResults,
 } from '../storage/scans';
 import type { BaseLayerId, LayerVisibility, StoredScan } from '../storage/types';
-import type { LayerBundle, PipelineOptions } from '../analysis/types';
+import { CURRENT_BUNDLE_VERSION, type LayerBundle, type PipelineOptions } from '../analysis/types';
 import type { PipelineStage, WorkerRequest, WorkerResponse } from '../worker/protocol';
 
 const DEBOUNCE_MS = 200;
@@ -143,7 +143,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       // when they navigate back.
       void saveScanResults({
         scanId: m.scanId,
-        bundleVersion: 1,
+        bundleVersion: CURRENT_BUNDLE_VERSION,
         builtAt: Date.now(),
         bundle: m.bundle,
       });
@@ -218,12 +218,13 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       // Try the cache first.
       const cached = await loadScanResults(id);
       if (get().activeScanId !== id) return; // user navigated away during await
-      if (cached) {
+      if (cached && cached.bundleVersion === CURRENT_BUNDLE_VERSION) {
         set({ layerBundle: cached.bundle });
         return;
       }
-
-      // No cache — re-dispatch.
+      // Cache miss OR stale version — re-dispatch. (For stale, the worker
+      // will produce a fresh bundle and saveScanResults will overwrite the
+      // stale entry with bundleVersion=CURRENT_BUNDLE_VERSION.)
       const raws = await loadScanRawFiles(id);
       if (get().activeScanId !== id) return;
       const rawBytes = await Promise.all(

@@ -16,7 +16,7 @@ import {
   useDeeperMapsStore,
 } from '../store';
 import type { StoredScan } from '../../storage/types';
-import type { LayerBundle } from '../../analysis/types';
+import { CURRENT_BUNDLE_VERSION, type LayerBundle } from '../../analysis/types';
 import type { WorkerResponse } from '../../worker/protocol';
 
 const DEFAULT_THRESHOLDS = {
@@ -163,12 +163,60 @@ describe('useDeeperMapsStore', () => {
     const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
     await saveScan(a, []);
     const bundle = emptyBundle();
-    await saveScanResults({ scanId: a.id, bundleVersion: 1, builtAt: 0, bundle });
+    await saveScanResults({
+      scanId: a.id,
+      bundleVersion: CURRENT_BUNDLE_VERSION,
+      builtAt: 0,
+      bundle,
+    });
     await useDeeperMapsStore.getState().hydrate();
 
     await useDeeperMapsStore.getState().setActiveScan(a.id);
 
     expect(useDeeperMapsStore.getState().layerBundle).toEqual(bundle);
+    expect(getStubbedPostMessage()).not.toHaveBeenCalled();
+  });
+
+  it('setActiveScan ignores cache when bundleVersion is stale', async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    await saveScan(a, []);
+    // Pre-populate scanResults with a deliberately stale bundleVersion. The
+    // store must treat this as a cache miss and re-dispatch to the worker.
+    const staleBundle = emptyBundle();
+    await saveScanResults({
+      scanId: a.id,
+      bundleVersion: CURRENT_BUNDLE_VERSION - 1,
+      builtAt: 0,
+      bundle: staleBundle,
+    });
+    await useDeeperMapsStore.getState().hydrate();
+
+    await useDeeperMapsStore.getState().setActiveScan(a.id);
+
+    // Cache was ignored: layerBundle was NOT loaded from the stale entry.
+    expect(useDeeperMapsStore.getState().layerBundle).toBeNull();
+    // Worker was dispatched an analyse to recompute with current code.
+    const post = getStubbedPostMessage();
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post.mock.calls[0]?.[0]).toMatchObject({ kind: 'analyse', scanId: a.id });
+  });
+
+  it('setActiveScan uses cache when bundleVersion matches CURRENT_BUNDLE_VERSION', async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    await saveScan(a, []);
+    const bundle = emptyBundle();
+    await saveScanResults({
+      scanId: a.id,
+      bundleVersion: CURRENT_BUNDLE_VERSION,
+      builtAt: 0,
+      bundle,
+    });
+    await useDeeperMapsStore.getState().hydrate();
+
+    await useDeeperMapsStore.getState().setActiveScan(a.id);
+
+    expect(useDeeperMapsStore.getState().layerBundle).toEqual(bundle);
+    // No analyse dispatch — cache hit.
     expect(getStubbedPostMessage()).not.toHaveBeenCalled();
   });
 
@@ -180,7 +228,7 @@ describe('useDeeperMapsStore', () => {
     await saveScan(b, []);
     await saveScanResults({
       scanId: a.id,
-      bundleVersion: 1,
+      bundleVersion: CURRENT_BUNDLE_VERSION,
       builtAt: 0,
       bundle: {
         bathymetry: { type: 'FeatureCollection', features: [] },
@@ -430,6 +478,23 @@ describe('useDeeperMapsStore — worker message routing', () => {
     await new Promise<void>((r) => setTimeout(r, 0));
     const cached = await loadScanResults(ACTIVE_ID);
     expect(cached?.bundle).toEqual(bundle);
+  });
+
+  it('saveScanResults stamps the current bundle version', async () => {
+    const bundle = emptyBundle();
+    useDeeperMapsStore.setState({ activeScanId: ACTIVE_ID });
+
+    deliverWorkerMessage({
+      kind: 'layerBundle',
+      scanId: ACTIVE_ID,
+      bundle,
+      warnings: [],
+    });
+
+    // Fire-and-forget IDB write; let it settle.
+    await new Promise<void>((r) => setTimeout(r, 0));
+    const cached = await loadScanResults(ACTIVE_ID);
+    expect(cached?.bundleVersion).toBe(CURRENT_BUNDLE_VERSION);
   });
 
   it('routes an error message: clears progress, surfaces the message in warnings', () => {

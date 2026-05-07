@@ -1,5 +1,18 @@
 import type { FeatureCollection } from 'geojson';
 
+/**
+ * Version of the LayerBundle shape produced by the current pipeline. Bump this
+ * whenever LayerBundle's shape changes (a new field, a renamed field, a removed
+ * field, or a semantic change to existing fields). Cached results with a
+ * non-matching version are treated as a cache miss by `setActiveScan` so
+ * the worker re-analyses with the current code.
+ *
+ * Version history:
+ *   1 — initial release.
+ *   2 — adds `bounds` field for map auto-framing (commit 5565bbf).
+ */
+export const CURRENT_BUNDLE_VERSION = 2;
+
 export interface LiftoutOptions {
   hardThresholdM: number;
   rollingWindow: number;
