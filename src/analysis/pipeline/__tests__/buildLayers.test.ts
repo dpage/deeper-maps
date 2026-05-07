@@ -14,6 +14,48 @@ describe('buildLayers — empty data', () => {
     expect(lb.fishDensity.features).toHaveLength(0);
     expect(lb.sweetSpots.features).toHaveLength(0);
     expect(lb.scales.depth.max - lb.scales.depth.min).toBeGreaterThan(0);
+    expect(lb.bounds).toBeNull();
+  });
+});
+
+describe('buildLayers — bounds', () => {
+  it('computes [sw, ne] bounds from clean.rows lon/lat', () => {
+    const clean: CleanBath = {
+      rows: [
+        {
+          ts_ms: 0,
+          lat: 51.7,
+          lon: -1.43,
+          depth_m: 1.0,
+          session_id: 0,
+          file_id: 0,
+        },
+        {
+          ts_ms: 100,
+          lat: 51.701,
+          lon: -1.428,
+          depth_m: 1.5,
+          session_id: 0,
+          file_id: 0,
+        },
+        {
+          ts_ms: 200,
+          lat: 51.6995,
+          lon: -1.4315,
+          depth_m: 1.2,
+          session_id: 0,
+          file_id: 0,
+        },
+      ],
+      sessions: [],
+      liftoutsRemoved: 0,
+    };
+    const lb = buildLayers(clean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.bounds).not.toBeNull();
+    expect(lb.bounds?.sw[0]).toBeCloseTo(-1.4315, 5);
+    expect(lb.bounds?.sw[1]).toBeCloseTo(51.6995, 5);
+    expect(lb.bounds?.ne[0]).toBeCloseTo(-1.428, 5);
+    expect(lb.bounds?.ne[1]).toBeCloseTo(51.701, 5);
   });
 });
 

@@ -1,10 +1,12 @@
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('maplibre-gl', async () => import('./__mocks__/maplibre-gl'));
 
+import type { LayerBundle } from '../../analysis/types';
 import { useDeeperMapsStore } from '../../state/store';
 import { closeDeeperMapsDb } from '../../storage/db';
+import type { StoredScan } from '../../storage/types';
 import { MapView } from '../MapView';
 
 beforeEach(async () => {
@@ -22,6 +24,69 @@ beforeEach(async () => {
 afterEach(async () => {
   await closeDeeperMapsDb();
 });
+
+function bundleWith(bounds: LayerBundle['bounds']): LayerBundle {
+  return {
+    bathymetry: { type: 'FeatureCollection', features: [] },
+    weed: { type: 'FeatureCollection', features: [] },
+    fishDensity: { type: 'FeatureCollection', features: [] },
+    sweetSpots: { type: 'FeatureCollection', features: [] },
+    scales: {
+      depth: { min: 0, max: 1 },
+      weed: { min: 0, max: 1 },
+      fishRate: { min: 0, max: 1 },
+    },
+    bounds,
+  };
+}
+
+function makeScan(
+  id: string,
+  baseLayer: 'osm' | 'satellite' = 'osm',
+  overrides: Partial<StoredScan> = {},
+): StoredScan {
+  return {
+    id,
+    name: 'test',
+    deviceType: 'quest',
+    contentHash: 'h',
+    createdAt: 0,
+    updatedAt: 0,
+    fileMeta: [],
+    thresholds: {
+      liftout: {
+        hardThresholdM: 5,
+        rollingWindow: 31,
+        madMultiplier: 6,
+        madOffsetM: 0.3,
+        sessionGapS: 300,
+      },
+      sonar: {
+        binsPerM: 576.6,
+        ringdownBins: 30,
+        bottomHugM: 0.05,
+        weedAmpFactor: 1.5,
+        weedMinAmp: 30,
+        fishAmpFactor: 2,
+        fishMinAmp: 60,
+        fishMinRun: 2,
+      },
+      cell: { cellSizeM: 2, minPingsPerCell: 5 },
+      category: {
+        goldFishRate: 0.3,
+        goldMaxWeed: 0.1,
+        silverMaxWeed: 0.15,
+        bronzeFishRate: 0.05,
+        bronzeMaxWeed: 0.5,
+        weededMinWeed: 0.5,
+      },
+      colorScale: { outlierTrimPct: 0.05 },
+    },
+    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
+    baseLayer,
+    ...overrides,
+  };
+}
 
 describe('<MapView/>', () => {
   it('mounts without crashing when no scan is active', () => {
@@ -42,35 +107,93 @@ describe('<MapView/>', () => {
   });
 
   it('pushes the current layerBundle to sources when MapLibre fires load (cache-hit case)', async () => {
-    // Reset the mock-level setData tracker.
     const mock = await import('./__mocks__/maplibre-gl');
-    mock.__resetSetDataCalls();
+    mock.__resetAll();
 
-    // Pre-set a layerBundle in the store BEFORE mounting MapView.
-    const bundle = {
-      bathymetry: { type: 'FeatureCollection' as const, features: [] },
-      weed: { type: 'FeatureCollection' as const, features: [] },
-      fishDensity: { type: 'FeatureCollection' as const, features: [] },
-      sweetSpots: { type: 'FeatureCollection' as const, features: [] },
-      scales: {
-        depth: { min: 0, max: 1 },
-        weed: { min: 0, max: 1 },
-        fishRate: { min: 0, max: 1 },
-      },
-    };
+    const bundle = bundleWith(null);
     useDeeperMapsStore.setState({ layerBundle: bundle });
 
     render(<MapView />);
-    // The mock fires the 'load' event via setTimeout(cb, 0). Wait for it.
     await new Promise((r) => setTimeout(r, 5));
-    // The load handler should have pushed all four bundle FeatureCollections to
-    // their respective sources, even though the layerBundle effect's deps
-    // haven't changed since mount.
     expect(mock.__setDataCalls.length).toBeGreaterThanOrEqual(4);
     const sourceIds = mock.__setDataCalls.map((c) => c.sourceId);
     expect(sourceIds).toContain('bathymetry');
     expect(sourceIds).toContain('weed');
     expect(sourceIds).toContain('fish-density');
     expect(sourceIds).toContain('sweet-spots');
+  });
+
+  it("registers the fish-icon SDF image during the map's load handler", async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    const fishIconCall = mock.__addImageCalls.find((c) => c.id === 'fish-icon');
+    expect(fishIconCall).toBeDefined();
+    expect(fishIconCall?.options?.sdf).toBe(true);
+  });
+
+  it('fitBounds to the layerBundle bounds the first time a bundle lands for a scan', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const scan = makeScan('11111111-1111-1111-1111-111111111111');
+    const bundle = bundleWith({ sw: [-1.45, 51.7], ne: [-1.4, 51.75] });
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      layerBundle: bundle,
+    });
+
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(mock.__fitBoundsCalls.length).toBeGreaterThanOrEqual(1);
+    const call = mock.__fitBoundsCalls[0];
+    expect(call?.bounds[0][0]).toBeCloseTo(-1.45, 5);
+    expect(call?.bounds[0][1]).toBeCloseTo(51.7, 5);
+    expect(call?.bounds[1][0]).toBeCloseTo(-1.4, 5);
+    expect(call?.bounds[1][1]).toBeCloseTo(51.75, 5);
+    expect(call?.options.padding).toBe(40);
+    expect(call?.options.maxZoom).toBe(16);
+  });
+
+  it('does not call fitBounds when bundle.bounds is null', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const scan = makeScan('22222222-2222-2222-2222-222222222222');
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      layerBundle: bundleWith(null),
+    });
+
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+    expect(mock.__fitBoundsCalls.length).toBe(0);
+  });
+
+  it('switching baseLayer calls setStyle (preserving pan/zoom) instead of tearing down the map', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const scan = makeScan('33333333-3333-3333-3333-333333333333', 'osm');
+    useDeeperMapsStore.setState({ scans: { [scan.id]: scan }, activeScanId: scan.id });
+
+    const { rerender } = render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    // Flip to satellite.
+    const satScan: StoredScan = { ...scan, baseLayer: 'satellite' };
+    act(() => {
+      useDeeperMapsStore.setState({ scans: { [scan.id]: satScan } });
+    });
+    rerender(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(mock.__setStyleCalls.length).toBeGreaterThanOrEqual(1);
   });
 });

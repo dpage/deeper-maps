@@ -135,4 +135,11 @@ export interface LayerBundle {
   fishDensity: FeatureCollection;
   sweetSpots: FeatureCollection;
   scales: LayerScales;
+  /**
+   * Geographic bounding box of the scan's actual data, derived from
+   * `clean.rows` (post-lift-out, GPS-interpolated). Consumers (the map view)
+   * use this to fitBounds when a scan first lands. `null` when the scan
+   * produced no rows — consumers should fall back to a default centre.
+   */
+  bounds: { sw: [number, number]; ne: [number, number] } | null;
 }

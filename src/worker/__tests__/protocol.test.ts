@@ -79,6 +79,7 @@ describe('worker protocol', () => {
           weed: { min: 0, max: 1 },
           fishRate: { min: 0, max: 1 },
         },
+        bounds: null,
       },
       warnings: [],
     };
@@ -122,6 +123,7 @@ describe('worker protocol', () => {
             weed: { min: 0, max: 1 },
             fishRate: { min: 0, max: 1 },
           },
+          bounds: null,
         },
         warnings: [],
       },

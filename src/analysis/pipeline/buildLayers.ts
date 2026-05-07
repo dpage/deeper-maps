@@ -203,6 +203,21 @@ interface SweetSpotProps {
   mean_weed: number;
 }
 
+function computeBounds(clean: CleanBath): LayerBundle['bounds'] {
+  if (clean.rows.length === 0) return null;
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  for (const r of clean.rows) {
+    if (r.lon < minLon) minLon = r.lon;
+    if (r.lon > maxLon) maxLon = r.lon;
+    if (r.lat < minLat) minLat = r.lat;
+    if (r.lat > maxLat) maxLat = r.lat;
+  }
+  return { sw: [minLon, minLat], ne: [maxLon, maxLat] };
+}
+
 function buildSweetSpots(cells: CategorisedCells): FeatureCollection {
   const features: Feature<Point, SweetSpotProps>[] = [];
   for (const c of cells.rows) {
@@ -243,5 +258,6 @@ export function buildLayers(
     fishDensity: buildFishDensity(cells),
     sweetSpots: buildSweetSpots(cells),
     scales,
+    bounds: computeBounds(clean),
   };
 }

@@ -118,6 +118,7 @@ describe('scans CRUD', () => {
           weed: { min: 0, max: 1 },
           fishRate: { min: 0, max: 1 },
         },
+        bounds: null,
       },
     });
 
@@ -142,6 +143,7 @@ describe('scans CRUD', () => {
         weed: { min: 0, max: 0.3 },
         fishRate: { min: 0, max: 0.5 },
       },
+      bounds: null,
     };
     await saveScanResults({ scanId: scan.id, bundleVersion: 1, builtAt: 1700000000000, bundle });
 

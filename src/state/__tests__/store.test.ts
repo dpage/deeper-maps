@@ -53,6 +53,7 @@ function emptyBundle(): LayerBundle {
       weed: { min: 0, max: 1 },
       fishRate: { min: 0, max: 1 },
     },
+    bounds: null,
   };
 }
 
@@ -188,6 +189,7 @@ describe('useDeeperMapsStore', () => {
           weed: { min: 0, max: 1 },
           fishRate: { min: 0, max: 1 },
         },
+        bounds: null,
       },
     });
     await useDeeperMapsStore.getState().hydrate();

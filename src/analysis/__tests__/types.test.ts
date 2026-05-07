@@ -86,6 +86,7 @@ describe('analysis types', () => {
         weed: { min: 0, max: 1 },
         fishRate: { min: 0, max: 1 },
       },
+      bounds: null,
     };
     expect(lb.scales.depth.max).toBe(1);
   });

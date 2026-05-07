@@ -5,6 +5,7 @@ import type maplibregl from 'maplibre-gl';
 
 export const FISH_DENSITY_SOURCE_ID = 'fish-density';
 export const FISH_DENSITY_LAYER_ID = 'fish-density-circles';
+export const FISH_ICON_NAME = 'fish-icon';
 
 export function buildFishDensityStyle(scale: ScaleRange): LayerStyle {
   const span = Math.max(scale.max - scale.min, 1e-6);
@@ -17,34 +18,44 @@ export function buildFishDensityStyle(scale: ScaleRange): LayerStyle {
     },
     layer: {
       id: FISH_DENSITY_LAYER_ID,
-      type: 'circle',
+      type: 'symbol',
       source: FISH_DENSITY_SOURCE_ID,
-      paint: {
-        // radius = sqrt(n_pings), clamped to [3, 14] px
-        'circle-radius': [
+      layout: {
+        'icon-image': FISH_ICON_NAME,
+        // Size scales with √n_pings (confidence by sample count). Stops chosen
+        // so a typical cell (n_pings ≈ 10) lands around 0.6, while sparse
+        // cells stay legible.
+        'icon-size': [
           'interpolate',
           ['linear'],
           ['sqrt', ['get', 'n_pings']],
           0,
-          3,
+          0.35,
           5,
-          6,
+          0.55,
           10,
-          10,
+          0.8,
           20,
-          14,
+          1.1,
         ] as unknown as maplibregl.ExpressionSpecification,
-        'circle-color': [
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+        // Keep fish horizontal regardless of map rotation (viewport-aligned).
+        'icon-rotation-alignment': 'viewport',
+        'icon-pitch-alignment': 'viewport',
+        visibility: 'visible',
+      },
+      paint: {
+        'icon-color': [
           'interpolate',
           ['linear'],
           ['get', 'fish_rate'],
           ...colorStops,
         ] as unknown as maplibregl.ExpressionSpecification,
-        'circle-opacity': 0.85,
-        'circle-stroke-width': 0.5,
-        'circle-stroke-color': '#222',
+        'icon-opacity': 0.95,
+        'icon-halo-color': '#222',
+        'icon-halo-width': 0.6,
       },
-      layout: { visibility: 'visible' },
     } as unknown as maplibregl.LayerSpecification,
   };
 }

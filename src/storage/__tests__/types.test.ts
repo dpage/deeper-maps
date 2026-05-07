@@ -76,6 +76,7 @@ describe('storage types', () => {
           weed: { min: 0, max: 1 },
           fishRate: { min: 0, max: 1 },
         },
+        bounds: null,
       },
     };
     expect(r.bundleVersion).toBe(1);
