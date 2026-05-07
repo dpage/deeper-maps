@@ -29,7 +29,6 @@ const SCAN: StoredScan = {
     colorScale: DEFAULT_COLOR_SCALE_OPTIONS,
   },
   layerVisibility: { bathymetry: true, weed: false, fishDensity: true, sweetSpots: true },
-  baseLayer: 'osm',
 };
 
 beforeEach(async () => {

@@ -12,12 +12,14 @@ import { MapView } from '../MapView';
 beforeEach(async () => {
   await closeDeeperMapsDb();
   indexedDB.deleteDatabase('deeper-maps');
+  globalThis.localStorage?.clear();
   useDeeperMapsStore.setState({
     scans: {},
     activeScanId: null,
     layerBundle: null,
     progress: null,
     warnings: [],
+    baseLayer: 'osm',
   });
 });
 
@@ -40,11 +42,7 @@ function bundleWith(bounds: LayerBundle['bounds']): LayerBundle {
   };
 }
 
-function makeScan(
-  id: string,
-  baseLayer: 'osm' | 'satellite' = 'osm',
-  overrides: Partial<StoredScan> = {},
-): StoredScan {
+function makeScan(id: string, overrides: Partial<StoredScan> = {}): StoredScan {
   return {
     id,
     name: 'test',
@@ -83,7 +81,6 @@ function makeScan(
       colorScale: { outlierTrimPct: 0.05 },
     },
     layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
-    baseLayer,
     ...overrides,
   };
 }
@@ -180,16 +177,19 @@ describe('<MapView/>', () => {
     const mock = await import('./__mocks__/maplibre-gl');
     mock.__resetAll();
 
-    const scan = makeScan('33333333-3333-3333-3333-333333333333', 'osm');
-    useDeeperMapsStore.setState({ scans: { [scan.id]: scan }, activeScanId: scan.id });
+    const scan = makeScan('33333333-3333-3333-3333-333333333333');
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      baseLayer: 'osm',
+    });
 
     const { rerender } = render(<MapView />);
     await new Promise((r) => setTimeout(r, 5));
 
-    // Flip to satellite.
-    const satScan: StoredScan = { ...scan, baseLayer: 'satellite' };
+    // Flip the global baseLayer preference to satellite.
     act(() => {
-      useDeeperMapsStore.setState({ scans: { [scan.id]: satScan } });
+      useDeeperMapsStore.setState({ baseLayer: 'satellite' });
     });
     rerender(<MapView />);
     await new Promise((r) => setTimeout(r, 5));
@@ -197,35 +197,56 @@ describe('<MapView/>', () => {
     expect(mock.__setStyleCalls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('defers layerBundle apply via style.load when style is mid-swap (instead of dropping the update)', async () => {
+  it('defers layerBundle apply via style.load when overlays have not been re-added after a setStyle swap (even if isStyleLoaded() returns true)', async () => {
+    // Regression test for the bug where MapLibre's `isStyleLoaded()` flips to
+    // true as soon as the BASE style parses after `setStyle({ diff: false })`,
+    // but our overlay sources have been wiped and not yet re-added inside the
+    // `style.load` handler. Old code gated on `isStyleLoaded()` and therefore
+    // ran `getSource(...).setData(...)` against null sources — silently
+    // dropping the update. The new gate is our own `overlaysReadyRef`.
     const mock = await import('./__mocks__/maplibre-gl');
     mock.__resetAll();
 
-    // Mount with a scan but no bundle yet.
+    // Mount on osm with no bundle yet; let the initial load fire so the
+    // overlays are added once.
     const scan = makeScan('44444444-4444-4444-4444-444444444444');
-    useDeeperMapsStore.setState({ scans: { [scan.id]: scan }, activeScanId: scan.id });
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      baseLayer: 'osm',
+    });
     render(<MapView />);
-    // Let the initial load fire.
     await new Promise((r) => setTimeout(r, 5));
 
-    // Reset capture lists; pretend the style is now mid-swap.
+    // Reset capture lists; arm the mock to simulate the regression window —
+    // isStyleLoaded() will keep reading TRUE (the buggy MapLibre behaviour)
+    // but `once('style.load', cb)` will queue all callbacks instead of
+    // firing them, so addOverlaysAndReplay does NOT run yet.
     mock.__resetSetDataCalls();
     mock.__resetFitBoundsCalls();
-    mock.__setStyleLoaded(false);
+    mock.__setDeferStyleLoadCallbacks(true);
+    act(() => {
+      useDeeperMapsStore.setState({ baseLayer: 'satellite' });
+    });
+    await new Promise((r) => setTimeout(r, 5));
 
-    // The layerBundle arrives DURING the style swap.
+    // The layerBundle arrives during this window — isStyleLoaded() === true,
+    // but our overlay sources have not been re-added since the setStyle.
     const bundle = bundleWith({ sw: [-1.45, 51.7], ne: [-1.4, 51.75] });
     act(() => {
       useDeeperMapsStore.setState({ layerBundle: bundle });
     });
-    // Let the layerBundle effect run synchronously.
     await new Promise((r) => setTimeout(r, 5));
 
-    // Nothing applied yet — the effect deferred via map.once('style.load', ...).
+    // Nothing applied yet — the layerBundle effect deferred because
+    // overlaysReadyRef.current is false (gating on our own ref, not on
+    // map.isStyleLoaded()).
     expect(mock.__setDataCalls.length).toBe(0);
     expect(mock.__fitBoundsCalls.length).toBe(0);
 
-    // Now flush the deferred style.load — should apply data and frame.
+    // Now flush the deferred style.load — addOverlaysAndReplay re-adds the
+    // sources and replays the snapshot, which includes the bundle we just
+    // pushed into the store; the queued layerBundle-effect apply also fires.
     act(() => {
       mock.__flushStyleLoad();
     });

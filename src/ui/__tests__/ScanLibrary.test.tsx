@@ -32,7 +32,6 @@ function makeScan(id: string, name: string): StoredScan {
     fileMeta: [],
     thresholds: DEFAULTS,
     layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
-    baseLayer: 'osm',
   };
 }
 

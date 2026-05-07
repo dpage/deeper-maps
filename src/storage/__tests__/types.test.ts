@@ -46,7 +46,6 @@ describe('storage types', () => {
         fishDensity: true,
         sweetSpots: true,
       },
-      baseLayer: 'osm',
     };
     expect(s.deviceType).toBe('quest');
   });

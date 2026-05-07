@@ -14,12 +14,38 @@ import type { PipelineStage, WorkerRequest, WorkerResponse } from '../worker/pro
 
 const DEBOUNCE_MS = 200;
 
+const BASE_LAYER_KEY = 'deeper-maps:baseLayer';
+
+function loadBaseLayer(): BaseLayerId {
+  try {
+    const v = globalThis.localStorage?.getItem(BASE_LAYER_KEY);
+    if (v === 'satellite' || v === 'osm') return v;
+  } catch {
+    // localStorage may throw in private mode or sandboxed contexts; ignore.
+  }
+  return 'osm';
+}
+
+function persistBaseLayer(base: BaseLayerId): void {
+  try {
+    globalThis.localStorage?.setItem(BASE_LAYER_KEY, base);
+  } catch {
+    // Ignore; UI state still updates in-memory.
+  }
+}
+
 export interface DeeperMapsState {
   scans: Record<string, StoredScan>;
   activeScanId: string | null;
   layerBundle: LayerBundle | null;
   progress: { stage: PipelineStage; processed: number; total: number } | null;
   warnings: string[];
+  /**
+   * Global app-level base map preference. Persisted to localStorage under
+   * `deeper-maps:baseLayer` so it survives reloads. Not per-scan — switching
+   * scans should not change the user's preferred base map.
+   */
+  baseLayer: BaseLayerId;
   /**
    * Monotonic counter that increments every time the user explicitly requests a
    * scan be (re)framed — i.e. every `setActiveScan` and `saveAndAnalyse` call,
@@ -39,7 +65,7 @@ export interface DeeperMapsState {
     layer: keyof LayerVisibility,
     visible: boolean,
   ) => Promise<void>;
-  setBaseLayer: (scanId: string, base: BaseLayerId) => Promise<void>;
+  setBaseLayer: (base: BaseLayerId) => void;
   renameScan: (scanId: string, name: string) => Promise<void>;
   deleteScan: (scanId: string) => Promise<void>;
 }
@@ -156,6 +182,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     layerBundle: null,
     progress: null,
     warnings: [],
+    baseLayer: loadBaseLayer(),
     frameRequestSeq: 0,
 
     async hydrate() {
@@ -282,13 +309,9 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       await persistScan(updated);
     },
 
-    async setBaseLayer(scanId, base) {
-      const scan = get().scans[scanId];
-      if (!scan) return;
-      const updated: StoredScan = { ...scan, baseLayer: base, updatedAt: Date.now() };
-      set((s) => ({ scans: { ...s.scans, [scanId]: updated } }));
-      // TODO(spec §8.3): handle QuotaExceededError on this IDB write.
-      await persistScan(updated);
+    setBaseLayer(base) {
+      set({ baseLayer: base });
+      persistBaseLayer(base);
     },
 
     async renameScan(scanId, name) {

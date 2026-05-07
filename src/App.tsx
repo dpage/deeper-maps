@@ -2,7 +2,6 @@ import { CssBaseline, ThemeProvider } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { MapView } from './map/MapView';
 import { useDeeperMapsStore } from './state/store';
-import type { BaseLayerId } from './storage/types';
 import { ActiveScanPanel } from './ui/ActiveScanPanel';
 import { AppHeader } from './ui/AppHeader';
 import { CompletionToast } from './ui/CompletionToast';
@@ -16,8 +15,7 @@ import { UploadDialog } from './ui/UploadDialog';
 
 export function App(): JSX.Element {
   const hydrate = useDeeperMapsStore((s) => s.hydrate);
-  const activeScanId = useDeeperMapsStore((s) => s.activeScanId);
-  const scans = useDeeperMapsStore((s) => s.scans);
+  const baseLayer = useDeeperMapsStore((s) => s.baseLayer);
   const setBaseLayer = useDeeperMapsStore((s) => s.setBaseLayer);
   const [uploadOpen, setUploadOpen] = useState(false);
 
@@ -25,20 +23,12 @@ export function App(): JSX.Element {
     void hydrate();
   }, [hydrate]);
 
-  const activeScan = activeScanId ? scans[activeScanId] : undefined;
-  const baseLayer: BaseLayerId = activeScan?.baseLayer ?? 'osm';
-
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <ErrorBoundary>
         <Layout
-          header={
-            <AppHeader
-              baseLayer={baseLayer}
-              onBaseLayerChange={(b) => activeScan && void setBaseLayer(activeScan.id, b)}
-            />
-          }
+          header={<AppHeader baseLayer={baseLayer} onBaseLayerChange={(b) => setBaseLayer(b)} />}
           drawer={
             <>
               <ScanLibrary onRequestUpload={() => setUploadOpen(true)} />

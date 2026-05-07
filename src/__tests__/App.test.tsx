@@ -3,45 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('maplibre-gl', async () => import('../map/__tests__/__mocks__/maplibre-gl'));
 
-import {
-  DEFAULT_CATEGORY_THRESHOLDS,
-  DEFAULT_CELL_OPTIONS,
-  DEFAULT_COLOR_SCALE_OPTIONS,
-  DEFAULT_LIFTOUT_OPTIONS,
-  DEFAULT_SONAR_OPTIONS,
-} from '../analysis/constants';
 import { useDeeperMapsStore } from '../state/store';
 import { closeDeeperMapsDb } from '../storage/db';
-import { saveScan } from '../storage/scans';
-import type { StoredScan } from '../storage/types';
 import { App } from '../App';
-
-const DEFAULT_THRESHOLDS = {
-  liftout: DEFAULT_LIFTOUT_OPTIONS,
-  sonar: DEFAULT_SONAR_OPTIONS,
-  cell: DEFAULT_CELL_OPTIONS,
-  category: DEFAULT_CATEGORY_THRESHOLDS,
-  colorScale: DEFAULT_COLOR_SCALE_OPTIONS,
-};
-
-function makeScan(id: string, name: string): StoredScan {
-  return {
-    id,
-    name,
-    deviceType: 'quest',
-    contentHash: 'h',
-    createdAt: 0,
-    updatedAt: 0,
-    fileMeta: [],
-    thresholds: DEFAULT_THRESHOLDS,
-    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
-    baseLayer: 'osm',
-  };
-}
 
 beforeEach(async () => {
   await closeDeeperMapsDb();
   indexedDB.deleteDatabase('deeper-maps');
+  globalThis.localStorage?.clear();
   globalThis.__deeperMapsWorker = {
     postMessage: vi.fn(),
     addEventListener: vi.fn(),
@@ -54,6 +23,7 @@ beforeEach(async () => {
     layerBundle: null,
     progress: null,
     warnings: [],
+    baseLayer: 'osm',
   });
 });
 
@@ -87,45 +57,27 @@ describe('<App/>', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
-  // Coverage extension: when there's an active scan, the AppHeader picks up
-  // its baseLayer and the onBaseLayerChange callback dispatches to the store.
-  // Exercises the truthy branch of `activeScanId ? scans[activeScanId] : undefined`
-  // and the truthy side of `activeScan && void setBaseLayer(activeScan.id, b)`.
-  it('with an active scan: changing the base layer dispatches setBaseLayer for that scan', async () => {
+  // Coverage extension: changing the base layer dispatches the global
+  // (no-scanId) setBaseLayer on the store. baseLayer is now an app-level
+  // preference that lives outside StoredScan.
+  it('changing the base layer dispatches setBaseLayer with the new global value', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
-    const scan = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Lake A');
-    // Persist the scan so App's hydrate() picks it up. Otherwise hydrate
-    // overwrites the store's `scans` to `{}` and the inline gate
-    // `activeScan && void setBaseLayer(...)` evaluates to falsy.
-    await saveScan(scan, []);
-    const setBaseLayerMock = vi.fn(async () => {});
-    useDeeperMapsStore.setState({
-      scans: { [scan.id]: scan },
-      activeScanId: scan.id,
-      setBaseLayer: setBaseLayerMock,
-    });
+    const setBaseLayerMock = vi.fn();
+    useDeeperMapsStore.setState({ setBaseLayer: setBaseLayerMock });
     render(<App />);
-    // Wait for hydrate() to complete so `scans` contains the persisted scan.
-    await waitFor(() => expect(useDeeperMapsStore.getState().scans[scan.id]).toBeDefined());
     await user.click(screen.getByRole('combobox'));
     await user.click(screen.getByRole('option', { name: /satellite/i }));
-    expect(setBaseLayerMock).toHaveBeenCalledWith(scan.id, 'satellite');
+    expect(setBaseLayerMock).toHaveBeenCalledWith('satellite');
   });
 
-  // Coverage extension: when there's NO active scan, the gated callback is a
-  // no-op. We can't easily trigger the BaseLayerSelect onChange when there's
-  // no scan visible (the AppHeader is still there but ActiveScanPanel is
-  // hidden), so we just verify the gate by clicking through and confirming
-  // setBaseLayer was NOT called. This exercises the falsy branch.
-  it('with no active scan: changing the base layer is a no-op', async () => {
-    const user = (await import('@testing-library/user-event')).default.setup();
-    const setBaseLayerSpy = vi
-      .spyOn(useDeeperMapsStore.getState(), 'setBaseLayer')
-      .mockResolvedValue();
+  // The header reflects the current global baseLayer regardless of whether a
+  // scan is active. Pre-populate the store with `satellite` and assert the
+  // BaseLayerSelect shows it.
+  it('reflects the global baseLayer in the header when no scan is active', () => {
+    useDeeperMapsStore.setState({ baseLayer: 'satellite' });
     render(<App />);
-    await user.click(screen.getByRole('combobox'));
-    await user.click(screen.getByRole('option', { name: /satellite/i }));
-    expect(setBaseLayerSpy).not.toHaveBeenCalled();
-    setBaseLayerSpy.mockRestore();
+    // The BaseLayerSelect is a MUI Select that renders its value as visible
+    // text; querying by the rendered "Satellite" label is the cleanest signal.
+    expect(screen.getByText(/satellite/i)).toBeInTheDocument();
   });
 });

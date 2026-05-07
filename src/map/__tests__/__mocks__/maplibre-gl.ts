@@ -53,25 +53,40 @@ export function __resetAll(): void {
   __resetFitBoundsCalls();
   __resetSetStyleCalls();
   __isStyleLoadedReturn = true;
+  __deferStyleLoadCallbacks = false;
   __pendingStyleLoadCallbacks.length = 0;
 }
 
 /**
  * Lets a test simulate "style is mid-swap": when set to `false`, subsequent
- * `MockMap.isStyleLoaded()` calls return `false` AND `once('style.load', cb)`
- * stops auto-firing — instead it pushes the callback into
- * `__pendingStyleLoadCallbacks` so the test can later flush it via
- * `__flushStyleLoad()` to mimic the style finishing loading.
+ * `MockMap.isStyleLoaded()` calls return `false`. By default, flipping this to
+ * `false` ALSO stops `once('style.load', cb)` from auto-firing — but tests
+ * that need to dissociate the two flags (e.g. simulate the regression where
+ * `isStyleLoaded()` returns true while overlays have not yet been re-added)
+ * can use `__setDeferStyleLoadCallbacks(true)` to force-queue regardless.
  */
 export let __isStyleLoadedReturn = true;
 export function __setStyleLoaded(loaded: boolean): void {
   __isStyleLoadedReturn = loaded;
 }
+/**
+ * When true, `once('style.load', cb)` queues the callback regardless of the
+ * current `__isStyleLoadedReturn`. Lets tests simulate the buggy MapLibre
+ * window where the BASE style has parsed (`isStyleLoaded() === true`) but
+ * the `style.load` event has not yet fired (so our overlay re-add has not
+ * happened). Reset by `__resetAll()` and by `__flushStyleLoad()`.
+ */
+export let __deferStyleLoadCallbacks = false;
+export function __setDeferStyleLoadCallbacks(defer: boolean): void {
+  __deferStyleLoadCallbacks = defer;
+}
 export const __pendingStyleLoadCallbacks: Array<() => void> = [];
 export function __flushStyleLoad(): void {
   // Mimic MapLibre: by the time style.load fires, the style has actually
-  // loaded, so isStyleLoaded() reads true again.
+  // loaded, so isStyleLoaded() reads true again. Also clear the defer flag —
+  // the test scenario it simulates (mid-swap) is over once the event lands.
   __isStyleLoadedReturn = true;
+  __deferStyleLoadCallbacks = false;
   const cbs = __pendingStyleLoadCallbacks.splice(0);
   for (const cb of cbs) cb();
 }
@@ -84,7 +99,7 @@ class MockMap {
   on = vi.fn((event: string, cb: () => void) => {
     if (event === 'load') setTimeout(cb, 0);
     if (event === 'style.load') {
-      if (__isStyleLoadedReturn) setTimeout(cb, 0);
+      if (__isStyleLoadedReturn && !__deferStyleLoadCallbacks) setTimeout(cb, 0);
       else __pendingStyleLoadCallbacks.push(cb);
     }
     return this;
@@ -92,7 +107,7 @@ class MockMap {
   once = vi.fn((event: string, cb: () => void) => {
     if (event === 'load') setTimeout(cb, 0);
     if (event === 'style.load') {
-      if (__isStyleLoadedReturn) setTimeout(cb, 0);
+      if (__isStyleLoadedReturn && !__deferStyleLoadCallbacks) setTimeout(cb, 0);
       else __pendingStyleLoadCallbacks.push(cb);
     }
     return this;

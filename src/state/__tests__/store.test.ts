@@ -38,7 +38,6 @@ function makeScan(id: string, name: string, contentHash: string): StoredScan {
     fileMeta: [],
     thresholds: DEFAULT_THRESHOLDS,
     layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
-    baseLayer: 'osm',
   };
 }
 
@@ -86,6 +85,8 @@ function deliverWorkerMessage(msg: WorkerResponse): void {
 beforeEach(async () => {
   await closeDeeperMapsDb();
   indexedDB.deleteDatabase('deeper-maps');
+  // Clear localStorage so baseLayer-init tests don't bleed into one another.
+  globalThis.localStorage?.clear();
   // Reset store between tests
   useDeeperMapsStore.setState({
     scans: {},
@@ -93,6 +94,7 @@ beforeEach(async () => {
     layerBundle: null,
     progress: null,
     warnings: [],
+    baseLayer: 'osm',
     frameRequestSeq: 0,
   });
   __resetDebounceTimer();
@@ -324,21 +326,26 @@ describe('useDeeperMapsStore', () => {
     expect(useDeeperMapsStore.getState().scans).toEqual({});
   });
 
-  it('setBaseLayer persists and updates store', async () => {
-    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
-    await saveScan(a, []);
-    await useDeeperMapsStore.getState().hydrate();
+  it('setBaseLayer updates the global store value and persists it to localStorage', () => {
+    expect(useDeeperMapsStore.getState().baseLayer).toBe('osm');
 
-    await useDeeperMapsStore.getState().setBaseLayer(a.id, 'satellite');
+    useDeeperMapsStore.getState().setBaseLayer('satellite');
 
-    expect(useDeeperMapsStore.getState().scans[a.id]?.baseLayer).toBe('satellite');
+    expect(useDeeperMapsStore.getState().baseLayer).toBe('satellite');
+    expect(globalThis.localStorage?.getItem('deeper-maps:baseLayer')).toBe('satellite');
   });
 
-  it('setBaseLayer is a no-op for an unknown scan id', async () => {
-    await useDeeperMapsStore
-      .getState()
-      .setBaseLayer('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', 'satellite');
-    expect(useDeeperMapsStore.getState().scans).toEqual({});
+  it('setBaseLayer does not throw when localStorage.setItem throws', () => {
+    const setItemSpy = vi.spyOn(globalThis.localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded');
+    });
+    try {
+      expect(() => useDeeperMapsStore.getState().setBaseLayer('satellite')).not.toThrow();
+      // Store still updates in-memory even though persistence failed.
+      expect(useDeeperMapsStore.getState().baseLayer).toBe('satellite');
+    } finally {
+      setItemSpy.mockRestore();
+    }
   });
 
   it('renameScan persists to IndexedDB and updates store', async () => {
@@ -638,5 +645,44 @@ describe('useDeeperMapsStore — worker plumbing', () => {
     globalThis.__deeperMapsWorker = undefined;
     // Should not throw.
     expect(() => __attachWorkerListener()).not.toThrow();
+  });
+});
+
+describe('useDeeperMapsStore — baseLayer persistence', () => {
+  // These tests must reload the store module so the create() initialiser runs
+  // again and reads the pre-populated localStorage value. vi.resetModules() +
+  // a dynamic import gives us a fresh module evaluation per test.
+  beforeEach(() => {
+    vi.resetModules();
+    globalThis.localStorage?.clear();
+  });
+
+  it("initialises baseLayer from localStorage when set to 'satellite'", async () => {
+    globalThis.localStorage?.setItem('deeper-maps:baseLayer', 'satellite');
+    const mod = await import('../store');
+    expect(mod.useDeeperMapsStore.getState().baseLayer).toBe('satellite');
+  });
+
+  it("defaults to 'osm' when localStorage has no value", async () => {
+    const mod = await import('../store');
+    expect(mod.useDeeperMapsStore.getState().baseLayer).toBe('osm');
+  });
+
+  it("ignores unrecognised localStorage values and defaults to 'osm'", async () => {
+    globalThis.localStorage?.setItem('deeper-maps:baseLayer', 'something-bogus');
+    const mod = await import('../store');
+    expect(mod.useDeeperMapsStore.getState().baseLayer).toBe('osm');
+  });
+
+  it("falls back to 'osm' when localStorage.getItem throws", async () => {
+    const getItemSpy = vi.spyOn(globalThis.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('access denied');
+    });
+    try {
+      const mod = await import('../store');
+      expect(mod.useDeeperMapsStore.getState().baseLayer).toBe('osm');
+    } finally {
+      getItemSpy.mockRestore();
+    }
   });
 });

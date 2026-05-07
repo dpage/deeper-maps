@@ -72,10 +72,17 @@ export function MapView(): JSX.Element {
   // Tracks the baseLayer we last applied via setStyle, to avoid no-op
   // style.load cycles when other parts of activeScan change.
   const lastBaseLayerRef = useRef<BaseLayerId | null>(null);
+  // Tracks whether our overlay sources/layers have been (re-)added since the
+  // last setStyle. MapLibre's `isStyleLoaded()` flips to true as soon as the
+  // BASE style parses, but our overlay sources are only re-attached inside the
+  // `style.load` handler — so `isStyleLoaded()` is NOT a safe gate for
+  // `getSource(...).setData(...)`. This ref is.
+  const overlaysReadyRef = useRef(false);
   const layerBundle = useDeeperMapsStore((s) => s.layerBundle);
   const activeScanId = useDeeperMapsStore((s) => s.activeScanId);
   const scans = useDeeperMapsStore((s) => s.scans);
   const activeScan = activeScanId ? scans[activeScanId] : undefined;
+  const baseLayer = useDeeperMapsStore((s) => s.baseLayer);
   const frameRequestSeq = useDeeperMapsStore((s) => s.frameRequestSeq);
 
   // The store bumps `frameRequestSeq` every time the user picks a scan
@@ -161,10 +168,7 @@ export function MapView(): JSX.Element {
   useEffect(() => {
     if (!containerRef.current) return;
     if (mapRef.current) return;
-    const initialBase = useDeeperMapsStore.getState().activeScanId
-      ? (useDeeperMapsStore.getState().scans[useDeeperMapsStore.getState().activeScanId ?? '']
-          ?.baseLayer ?? 'osm')
-      : 'osm';
+    const initialBase = useDeeperMapsStore.getState().baseLayer;
     lastBaseLayerRef.current = initialBase;
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -176,6 +180,7 @@ export function MapView(): JSX.Element {
     mapRef.current = map;
     map.on('load', () => {
       addOverlaysAndReplay(map, 0);
+      overlaysReadyRef.current = true;
     });
     return () => {
       map.remove();
@@ -190,23 +195,30 @@ export function MapView(): JSX.Element {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const target = activeScan?.baseLayer ?? 'osm';
+    const target = baseLayer;
     if (lastBaseLayerRef.current === target) return;
     lastBaseLayerRef.current = target;
-    map.setStyle(styleFor(target), { diff: false });
+    // Mark overlays as not-yet-ready BEFORE setStyle so any layerBundle/
+    // visibility effects firing in the same render cycle defer their work.
+    overlaysReadyRef.current = false;
+    // Register the listener BEFORE setStyle in case setStyle dispatches
+    // style.load synchronously for cheap raster styles.
     void map.once('style.load', () => {
       addOverlaysAndReplay(map, 800);
+      overlaysReadyRef.current = true;
     });
-  }, [activeScan?.baseLayer]);
+    map.setStyle(styleFor(target), { diff: false });
+  }, [baseLayer]);
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
   // Update sources when layerBundle changes; fitBounds on first-land per scan.
-  // If the style is mid-swap (e.g. user just clicked a different scan whose
-  // saved baseLayer differs from the current one), defer the apply via
-  // `style.load` instead of bailing — otherwise the new bundle is dropped on
-  // the floor and the resulting addOverlaysAndReplay (which reads the
-  // snapshot at *its* fire time) may also miss it depending on timing.
+  // We gate on our own `overlaysReadyRef` rather than `map.isStyleLoaded()` —
+  // after `map.setStyle({ diff: false })`, `isStyleLoaded()` flips to true as
+  // soon as the BASE style parses, but our overlay sources are not re-added
+  // until the `style.load` callback registered by the base-layer effect runs.
+  // Calling `getSource(...)` between those two events returns null and the
+  // optional-chained `setData` silently drops the update, so we defer instead.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !layerBundle) return;
@@ -230,7 +242,7 @@ export function MapView(): JSX.Element {
         lastFramedScanIdRef.current = activeScanId;
       }
     };
-    if (map.isStyleLoaded()) {
+    if (overlaysReadyRef.current) {
       apply();
     } else {
       void map.once('style.load', apply);
@@ -239,10 +251,10 @@ export function MapView(): JSX.Element {
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
-  // Update visibility. Same defer pattern as the layerBundle effect: if the
-  // style is mid-swap, queue the visibility apply on style.load rather than
-  // bailing (which would lose the toggle if the user flipped a layer during
-  // a base-style swap).
+  // Update visibility. Same overlaysReadyRef-gated defer pattern as the
+  // layerBundle effect: if the overlays haven't been re-added yet after a
+  // style swap, queue the visibility apply on style.load rather than calling
+  // `setLayoutProperty` against a layer that doesn't exist.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !activeScan) return;
@@ -252,7 +264,7 @@ export function MapView(): JSX.Element {
         map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
       }
     };
-    if (map.isStyleLoaded()) {
+    if (overlaysReadyRef.current) {
       apply();
     } else {
       void map.once('style.load', apply);

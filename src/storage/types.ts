@@ -26,7 +26,6 @@ export interface StoredScan {
   fileMeta: PersistedFileMeta[];
   thresholds: PipelineOptions;
   layerVisibility: LayerVisibility;
-  baseLayer: BaseLayerId;
 }
 
 export interface StoredRawFile {
