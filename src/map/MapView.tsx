@@ -22,6 +22,14 @@ import {
 } from './layers/sweetSpots';
 import { WEED_LAYER_ID, WEED_SOURCE_ID, buildWeedStyle } from './layers/weed';
 
+// `maxzoom` on the raster source caps the highest zoom level at which MapLibre
+// will request tiles. Beyond it, MapLibre re-uses (overzooms) the highest
+// available tiles instead of fetching 404s — the user sees a slightly pixelated
+// version of what they had, not the "Map data not yet available" placeholder.
+// 19 is the published native max for both OSM (https://wiki.openstreetmap.org/wiki/Zoom_levels)
+// and Esri World Imagery in most regions.
+const RASTER_SOURCE_MAX_ZOOM = 19;
+
 const OSM_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -29,6 +37,7 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
       type: 'raster',
       tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
       tileSize: 256,
+      maxzoom: RASTER_SOURCE_MAX_ZOOM,
       attribution: '© OpenStreetMap contributors',
     },
   },
@@ -44,6 +53,7 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
+      maxzoom: RASTER_SOURCE_MAX_ZOOM,
       attribution: 'Tiles © Esri',
     },
   },
