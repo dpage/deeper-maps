@@ -1,6 +1,7 @@
 # Deeper Maps
 
 [![CI](https://github.com/dpage/deeper-maps/actions/workflows/ci.yml/badge.svg)](https://github.com/dpage/deeper-maps/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/demo-live-brightgreen)](https://dpage.github.io/deeper-maps/)
 
 A 100% client-side web app for visualising and analysing sonar scan data exported from Deeper sonar devices (Quest in v1).
 

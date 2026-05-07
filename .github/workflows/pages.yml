@@ -1,10 +1,16 @@
 name: Deploy to GitHub Pages
 
-# Manual trigger only. CI on `main` already produces the same single-file build
-# as a workflow artifact; this workflow takes that build and publishes it to
-# Pages when you decide it's release-ready.
+# Two triggers:
+#   - workflow_dispatch: manual "promote this build" button in the Actions tab.
+#   - push of a `v*` tag: auto-publish on release tagging
+#     (e.g. `git tag v1.0.0 && git push --tags`).
+# Regular CI on `main` already produces the same single-file build as a
+# workflow artifact; this workflow takes that build and publishes it to Pages.
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
