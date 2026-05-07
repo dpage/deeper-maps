@@ -1,4 +1,4 @@
-import type { Feature, FeatureCollection, MultiPolygon, Point } from 'geojson';
+import type { Feature, FeatureCollection, MultiLineString, MultiPolygon, Point } from 'geojson';
 import { trimmedRange } from '../stats/colorScale';
 import type {
   CategorisedCells,
@@ -182,6 +182,33 @@ function buildWeedContours(cells: CategorisedCells, scale: ScaleRange): FeatureC
   return { type: 'FeatureCollection', features };
 }
 
+/**
+ * Convert a `MultiPolygon` weed FeatureCollection into a `MultiLineString`
+ * FeatureCollection by extracting each ring of every polygon as a single
+ * line. Used to render weed contours as thin lines when bathymetry is also
+ * visible — keeps the contour shape and colour ramp without an opaque fill
+ * blocking the bathymetry colours underneath.
+ */
+function polygonsToLines(fc: FeatureCollection): FeatureCollection {
+  const features: Feature<MultiLineString, { level: number }>[] = [];
+  for (const f of fc.features) {
+    if (f.geometry.type !== 'MultiPolygon') continue;
+    const lines: number[][][] = [];
+    for (const polygon of f.geometry.coordinates) {
+      for (const ring of polygon) {
+        lines.push(ring);
+      }
+    }
+    if (lines.length === 0) continue;
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'MultiLineString', coordinates: lines },
+      properties: { level: (f.properties?.level as number) ?? 0 },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 function buildFishDensity(cells: CategorisedCells): FeatureCollection {
   const features: Feature<Point, { fish_rate: number; n_pings: number }>[] = [];
   for (const c of cells.rows) {
@@ -252,9 +279,13 @@ export function buildLayers(
     fishRate: safeRange(fishRates, colorScale.outlierTrimPct),
   };
 
+  const weed = buildWeedContours(cells, scales.weed);
+  const weedLines = polygonsToLines(weed);
+
   return {
     bathymetry: buildBathymetryContours(clean, scales.depth),
-    weed: buildWeedContours(cells, scales.weed),
+    weed,
+    weedLines,
     fishDensity: buildFishDensity(cells),
     sweetSpots: buildSweetSpots(cells),
     scales,

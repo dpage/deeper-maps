@@ -65,6 +65,7 @@ describe('<Legend/>', () => {
       layerBundle: {
         bathymetry: { type: 'FeatureCollection', features: [] },
         weed: { type: 'FeatureCollection', features: [] },
+        weedLines: { type: 'FeatureCollection', features: [] },
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
         scales: {
@@ -88,6 +89,7 @@ describe('<Legend/>', () => {
       layerBundle: {
         bathymetry: { type: 'FeatureCollection', features: [] },
         weed: { type: 'FeatureCollection', features: [] },
+        weedLines: { type: 'FeatureCollection', features: [] },
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
         scales: {
@@ -111,6 +113,7 @@ describe('<Legend/>', () => {
       layerBundle: {
         bathymetry: { type: 'FeatureCollection', features: [] },
         weed: { type: 'FeatureCollection', features: [] },
+        weedLines: { type: 'FeatureCollection', features: [] },
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
         scales: {
@@ -147,6 +150,7 @@ describe('<Legend/>', () => {
       layerBundle: {
         bathymetry: { type: 'FeatureCollection', features: [] },
         weed: { type: 'FeatureCollection', features: [] },
+        weedLines: { type: 'FeatureCollection', features: [] },
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
         scales: {

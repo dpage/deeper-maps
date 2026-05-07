@@ -10,8 +10,9 @@ import type { FeatureCollection } from 'geojson';
  * Version history:
  *   1 — initial release.
  *   2 — adds `bounds` field for map auto-framing (commit 5565bbf).
+ *   3 — adds `weedLines` field for line-style weed-over-bathymetry rendering.
  */
-export const CURRENT_BUNDLE_VERSION = 2;
+export const CURRENT_BUNDLE_VERSION = 3;
 
 export interface LiftoutOptions {
   hardThresholdM: number;
@@ -145,6 +146,14 @@ export interface LayerScales {
 export interface LayerBundle {
   bathymetry: FeatureCollection;
   weed: FeatureCollection;
+  /**
+   * Line-style representation of the weed contours: each MultiPolygon ring
+   * from `weed` becomes one line in a MultiLineString. Used by MapView when
+   * both bathymetry and weed are visible, so the weed contours render as
+   * thin lines that let the bathymetry colour show through. Empty when
+   * `weed.features` is empty.
+   */
+  weedLines: FeatureCollection;
   fishDensity: FeatureCollection;
   sweetSpots: FeatureCollection;
   scales: LayerScales;

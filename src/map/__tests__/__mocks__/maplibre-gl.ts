@@ -35,6 +35,13 @@ export const __fitBoundsCalls: {
  */
 export const __setStyleCalls: { style: unknown; options?: Record<string, unknown> }[] = [];
 
+/**
+ * Tracks every `setLayoutProperty(layerId, name, value)` call so the weed
+ * visibility tests can assert which layer was shown / hidden. Reset via
+ * `__resetSetLayoutPropertyCalls()`.
+ */
+export const __setLayoutPropertyCalls: { layerId: string; name: string; value: unknown }[] = [];
+
 export function __resetSetDataCalls(): void {
   __setDataCalls.length = 0;
 }
@@ -47,11 +54,15 @@ export function __resetFitBoundsCalls(): void {
 export function __resetSetStyleCalls(): void {
   __setStyleCalls.length = 0;
 }
+export function __resetSetLayoutPropertyCalls(): void {
+  __setLayoutPropertyCalls.length = 0;
+}
 export function __resetAll(): void {
   __resetSetDataCalls();
   __resetAddImageCalls();
   __resetFitBoundsCalls();
   __resetSetStyleCalls();
+  __resetSetLayoutPropertyCalls();
   __isStyleLoadedReturn = true;
   __deferStyleLoadCallbacks = false;
   __pendingStyleLoadCallbacks.length = 0;
@@ -127,7 +138,9 @@ class MockMap {
   });
   hasImage = vi.fn(() => false);
   removeImage = vi.fn();
-  setLayoutProperty = vi.fn();
+  setLayoutProperty = vi.fn((layerId: string, name: string, value: unknown) => {
+    __setLayoutPropertyCalls.push({ layerId, name, value });
+  });
   setStyle = vi.fn((style: unknown, options?: Record<string, unknown>) => {
     __setStyleCalls.push(options ? { style, options } : { style });
   });

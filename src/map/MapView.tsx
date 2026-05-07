@@ -21,6 +21,7 @@ import {
   buildSweetSpotsStyle,
 } from './layers/sweetSpots';
 import { WEED_LAYER_ID, WEED_SOURCE_ID, buildWeedStyle } from './layers/weed';
+import { WEED_LINES_LAYER_ID, WEED_LINES_SOURCE_ID, buildWeedLinesStyle } from './layers/weedLines';
 
 // `maxzoom` on the raster source caps the highest zoom level at which MapLibre
 // will request tiles. Beyond it, MapLibre re-uses (overzooms) the highest
@@ -60,12 +61,36 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
 };
 
+// Layers whose visibility maps 1:1 to a single LayerVisibility flag.
+// `weed` is handled specially (see `applyVisibility`) because it toggles
+// between the filled and line-style weed layers depending on whether
+// bathymetry is also visible.
 const LAYER_VISIBILITY_KEYS: Array<{ key: keyof LayerVisibility; layerId: string }> = [
   { key: 'bathymetry', layerId: BATHYMETRY_LAYER_ID },
-  { key: 'weed', layerId: WEED_LAYER_ID },
   { key: 'fishDensity', layerId: FISH_DENSITY_LAYER_ID },
   { key: 'sweetSpots', layerId: SWEET_SPOTS_LAYER_ID },
 ];
+
+/**
+ * Apply the given scan's layerVisibility flags to all overlay layers.
+ *
+ * Simple layers (bathymetry, fish density, sweet spots) map 1:1 from a
+ * boolean visibility flag to `setLayoutProperty(layerId, 'visibility', ...)`.
+ *
+ * Weed is special: when both bathymetry and weed are visible, we render
+ * weed as line contours (so the bathymetry colour shows through cleanly).
+ * Otherwise — weed alone, or weed off — we render the filled contours
+ * (current behaviour) or hide both.
+ */
+function applyVisibility(map: MapLibreMap, scan: { layerVisibility: LayerVisibility }): void {
+  for (const { key, layerId } of LAYER_VISIBILITY_KEYS) {
+    map.setLayoutProperty(layerId, 'visibility', scan.layerVisibility[key] ? 'visible' : 'none');
+  }
+  const weedOn = scan.layerVisibility.weed;
+  const bathOn = scan.layerVisibility.bathymetry;
+  map.setLayoutProperty(WEED_LAYER_ID, 'visibility', weedOn && !bathOn ? 'visible' : 'none');
+  map.setLayoutProperty(WEED_LINES_LAYER_ID, 'visibility', weedOn && bathOn ? 'visible' : 'none');
+}
 
 function styleFor(base: BaseLayerId): maplibregl.StyleSpecification {
   return base === 'satellite' ? SATELLITE_STYLE : OSM_STYLE;
@@ -125,9 +150,14 @@ export function MapView(): JSX.Element {
     }
 
     const fallback = { min: 0, max: 1 };
+    // Layer order matters — `addLayer` appends, and later layers render on
+    // top of earlier ones. Weed-lines sit between weed-fill and fish-density
+    // so they render OVER the bathymetry and weed-fill but UNDER the
+    // fish-density and sweet-spot markers.
     for (const builder of [
       buildBathymetryStyle(fallback),
       buildWeedStyle(fallback),
+      buildWeedLinesStyle(fallback),
       buildFishDensityStyle(fallback),
       buildSweetSpotsStyle(),
     ]) {
@@ -143,6 +173,9 @@ export function MapView(): JSX.Element {
         initialBundle.bathymetry,
       );
       (map.getSource(WEED_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(initialBundle.weed);
+      (map.getSource(WEED_LINES_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
+        initialBundle.weedLines,
+      );
       (map.getSource(FISH_DENSITY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         initialBundle.fishDensity,
       );
@@ -153,13 +186,7 @@ export function MapView(): JSX.Element {
     const initialScanId = snapshot.activeScanId;
     const initialScan = initialScanId ? snapshot.scans[initialScanId] : undefined;
     if (initialScan) {
-      for (const { key, layerId } of LAYER_VISIBILITY_KEYS) {
-        map.setLayoutProperty(
-          layerId,
-          'visibility',
-          initialScan.layerVisibility[key] ? 'visible' : 'none',
-        );
-      }
+      applyVisibility(map, initialScan);
     }
     if (initialBundle?.bounds && initialScanId && lastFramedScanIdRef.current !== initialScanId) {
       map.fitBounds([initialBundle.bounds.sw, initialBundle.bounds.ne], {
@@ -237,6 +264,9 @@ export function MapView(): JSX.Element {
         layerBundle.bathymetry,
       );
       (map.getSource(WEED_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(layerBundle.weed);
+      (map.getSource(WEED_LINES_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
+        layerBundle.weedLines,
+      );
       (map.getSource(FISH_DENSITY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         layerBundle.fishDensity,
       );
@@ -269,10 +299,7 @@ export function MapView(): JSX.Element {
     const map = mapRef.current;
     if (!map || !activeScan) return;
     const apply = (): void => {
-      for (const { key, layerId } of LAYER_VISIBILITY_KEYS) {
-        const visible = activeScan.layerVisibility[key];
-        map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
-      }
+      applyVisibility(map, activeScan);
     };
     if (overlaysReadyRef.current) {
       apply();

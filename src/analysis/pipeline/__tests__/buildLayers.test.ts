@@ -11,6 +11,7 @@ describe('buildLayers — empty data', () => {
     const lb = buildLayers(emptyClean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
     expect(lb.bathymetry.features).toHaveLength(0);
     expect(lb.weed.features).toHaveLength(0);
+    expect(lb.weedLines.features).toHaveLength(0);
     expect(lb.fishDensity.features).toHaveLength(0);
     expect(lb.sweetSpots.features).toHaveLength(0);
     expect(lb.scales.depth.max - lb.scales.depth.min).toBeGreaterThan(0);
@@ -176,5 +177,55 @@ describe('buildLayers — sweet spot markers', () => {
       .map((f) => f.properties?.category as string | undefined)
       .sort();
     expect(cats).toEqual(['gold', 'weeded']);
+  });
+});
+
+describe('buildLayers — weed line contours', () => {
+  it('produces a MultiLineString feature for each weed MultiPolygon contour', () => {
+    // 10x10 cell grid with a smooth mean_weed gradient so the contour
+    // generator produces a non-trivial set of polygons.
+    const rows = [];
+    for (let i = 0; i < 100; i++) {
+      const ix = i % 10;
+      const iy = Math.floor(i / 10);
+      rows.push({
+        cx: ix * 2,
+        cy: iy * 2,
+        lat: 51.7 + iy * 0.0001,
+        lon: -1.43 + ix * 0.0001,
+        n_pings: 5,
+        mean_depth: 1.5,
+        mean_weed: (ix + iy) * 0.02,
+        fish_rate: 0,
+        bottom_hardness: 1000,
+        category: 'none' as const,
+      });
+    }
+    const cells: CategorisedCells = {
+      cellSizeM: 2,
+      origin: { lat: 51.7, lon: -1.43 },
+      rows,
+    };
+    const lb = buildLayers(emptyClean, cells, { outlierTrimPct: 0 });
+
+    // Some weed contours should exist for this gradient.
+    expect(lb.weed.features.length).toBeGreaterThan(0);
+    // Every weed polygon contour produces a corresponding line contour.
+    expect(lb.weedLines.features).toHaveLength(lb.weed.features.length);
+    // The line contours are MultiLineStrings keyed off the same `level`.
+    for (const f of lb.weedLines.features) {
+      expect(f.geometry.type).toBe('MultiLineString');
+      expect(typeof f.properties?.level).toBe('number');
+    }
+    // Each level present in `weed` is also present in `weedLines`.
+    const weedLevels = new Set(lb.weed.features.map((f) => f.properties?.level as number));
+    const lineLevels = new Set(lb.weedLines.features.map((f) => f.properties?.level as number));
+    expect(lineLevels).toEqual(weedLevels);
+  });
+
+  it('returns empty weedLines when there are no weed polygons', () => {
+    const lb = buildLayers(emptyClean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.weed.features).toHaveLength(0);
+    expect(lb.weedLines.features).toHaveLength(0);
   });
 });
