@@ -23,6 +23,7 @@ describe('worker protocol', () => {
           madMultiplier: 6,
           madOffsetM: 0.3,
           sessionGapS: 300,
+          globalMadMultiplier: 4,
         },
         sonar: {
           binsPerM: 576.6,

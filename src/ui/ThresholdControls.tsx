@@ -97,6 +97,14 @@ export function ThresholdControls({ scan }: ThresholdControlsProps): JSX.Element
               step={0.5}
               onChange={(n) => update({ liftout: { ...t.liftout, madMultiplier: n } })}
             />
+            <ThresholdSlider
+              label="Global outlier strictness"
+              value={t.liftout.globalMadMultiplier}
+              min={1}
+              max={20}
+              step={0.5}
+              onChange={(n) => update({ liftout: { ...t.liftout, globalMadMultiplier: n } })}
+            />
           </Stack>
         </AccordionDetails>
       </Accordion>

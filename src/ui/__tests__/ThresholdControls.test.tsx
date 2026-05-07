@@ -91,6 +91,7 @@ describe('<ThresholdControls/>', () => {
       'Hard threshold (m)',
       'Session gap (s)',
       'MAD multiplier',
+      'Global outlier strictness',
       'Bottom-hug zone (m)',
       'Fish min amplitude',
       'Fish min run length (bins)',

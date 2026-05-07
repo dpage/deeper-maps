@@ -22,6 +22,18 @@ export interface LiftoutOptions {
   madMultiplier: number;
   madOffsetM: number;
   sessionGapS: number;
+  /**
+   * Global-pass MAD multiplier. After per-session rolling-median filtering,
+   * a global third pass flags any surviving row whose depth exceeds
+   * `median + globalMadMultiplier * MAD + madOffsetM`. Iterates up to a
+   * small fixed number of times so multi-modal lift-outs (boat parked at
+   * different depths during the trip) get caught.
+   *
+   * Default 4.0. Lower → more aggressive (catches more sustained lift-outs
+   * but may also flag real deep features in lakes with bimodal depth
+   * distributions). Higher → more conservative.
+   */
+  globalMadMultiplier: number;
 }
 
 export interface SonarOptions {

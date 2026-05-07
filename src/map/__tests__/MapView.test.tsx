@@ -59,6 +59,7 @@ function makeScan(id: string, overrides: Partial<StoredScan> = {}): StoredScan {
         madMultiplier: 6,
         madOffsetM: 0.3,
         sessionGapS: 300,
+        globalMadMultiplier: 4,
       },
       sonar: {
         binsPerM: 576.6,

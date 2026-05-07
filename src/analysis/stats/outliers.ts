@@ -57,11 +57,30 @@ export function mad(values: readonly number[]): number {
 }
 
 /**
- * Two-stage lift-out detection (per HANDOFF.md and deeper_analysis.py:flag_liftouts).
+ * Three-stage lift-out detection.
  *
  *   1. Hard threshold on absolute depth.
  *   2. Per-session rolling-median outlier rule:
  *        deviation > rollingMAD * madMultiplier + madOffsetM
+ *      (Matches HANDOFF.md / deeper_analysis.py:flag_liftouts.)
+ *   3. Global-MAD pass over the survivors of (1)+(2). Computes the median
+ *      and MAD over all not-yet-flagged depths and flags any survivor that
+ *      sits more than `globalMadMultiplier * MAD + madOffsetM` ABOVE the
+ *      global median. Iterates up to `MAX_GLOBAL_PASSES` times so multi-
+ *      modal lift-outs (boat parked at multiple distinct depths during one
+ *      trip) get caught — each iteration shrinks the survivor set, lowers
+ *      the median + MAD, and exposes more lift-outs that were hiding
+ *      behind the previous (lift-out-polluted) statistics.
+ *
+ * Stage 3 catches sustained lift-outs (e.g. boat resting on a bank for more
+ * than `rollingWindow` consecutive pings) that the per-session rolling-
+ * median pass misses because the cluster pollutes its own local window.
+ *
+ * Note on direction: stage 3 only flags depths ABOVE the median +
+ * threshold, never below. Lift-outs always read deeper than reality (boat
+ * in air or pinging the bank); a too-shallow reading is a real shallow
+ * spot, not a lift-out. Setting `globalMadMultiplier` to a very large value
+ * (e.g. `Infinity`) effectively disables stage 3.
  *
  * Sessions are identified by gaps > sessionGapS between consecutive ts_ms values.
  *
@@ -97,6 +116,33 @@ export function detectLiftouts(rows: readonly BathRow[], opts: LiftoutOptions): 
       const threshold = rollingMad[i]! * opts.madMultiplier + opts.madOffsetM;
       if (dev[i]! > threshold) flags[lo + i] = true;
     }
+  }
+
+  // Global-MAD pass over the survivors. Iterates so multi-modal lift-outs
+  // (multiple distinct lift-out depth tiers) all get exposed in turn.
+  const MAX_GLOBAL_PASSES = 5;
+  for (let pass = 0; pass < MAX_GLOBAL_PASSES; pass++) {
+    const survivorDepths: number[] = [];
+    for (let i = 0; i < n; i++) {
+      if (!flags[i]) survivorDepths.push(rows[i]!.depth_m);
+    }
+    if (survivorDepths.length < 5) break;
+    const sorted = [...survivorDepths].sort((a, b) => a - b);
+    const med = sorted[sorted.length >> 1]!;
+    const devs = sorted.map((d) => Math.abs(d - med)).sort((a, b) => a - b);
+    const globalMad = devs[devs.length >> 1]!;
+    const cutoff = med + opts.globalMadMultiplier * globalMad + opts.madOffsetM;
+    let flaggedThisPass = 0;
+    for (let i = 0; i < n; i++) {
+      if (flags[i]) continue;
+      // Above-median gate: never flag values below the median (real shallow
+      // pings, not lift-outs).
+      if (rows[i]!.depth_m > cutoff) {
+        flags[i] = true;
+        flaggedThisPass++;
+      }
+    }
+    if (flaggedThisPass === 0) break;
   }
 
   return flags;

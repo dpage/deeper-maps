@@ -5,6 +5,9 @@
 # Personal scan data (developer-local fixtures, not for public commit)
 sample-scans/
 
+# Local screen captures used to triage user-reported bugs; not for commit
+screen-captures/
+
 # Common
 .DS_Store
 

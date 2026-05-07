@@ -221,3 +221,36 @@ describe('buildLayers — bathymetry line contours', () => {
     expect(lb.bathymetryLines.features).toHaveLength(0);
   });
 });
+
+describe('buildLayers — colour-scale levels stay within the trimmed range', () => {
+  it('depth levels do not exceed scales.depth.max even when an outlier is present', () => {
+    // 5 depths, the last one a clear outlier. With outlierTrimPct=1.0 (the
+    // default), the trimmed range strips the 5.0 m tail so scales.depth.max
+    // is < 5.0. The colour-stop levels must not extend past max — otherwise
+    // the MapLibre interpolate stops disagree with the legend gradient
+    // labels (a cell at the legend's stated max would render at a mid-ramp
+    // colour).
+    const clean: CleanBath = {
+      rows: [0.5, 1.0, 1.5, 2.0, 5.0].map((d, i) => ({
+        ts_ms: i * 100,
+        lat: 51.7 + i * 0.0001,
+        lon: -1.43,
+        depth_m: d,
+        session_id: 0,
+        file_id: 0,
+      })),
+      sessions: [],
+      liftoutsRemoved: 0,
+    };
+    const lb = buildLayers(clean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.scales.depth.max).toBeLessThan(5.0);
+    const maxLevel = lb.scales.depth.levels[lb.scales.depth.levels.length - 1];
+    expect(maxLevel).toBeDefined();
+    // Allow a hair (1e-6) of slop for the strict-monotonicity epsilon bumps
+    // that computeContourLevels inserts on tied quantile values.
+    expect(maxLevel!).toBeLessThanOrEqual(lb.scales.depth.max + 1e-6);
+    // The 5.0 m outlier must NOT have leaked into the levels array — that's
+    // the actual bug being fixed.
+    expect(maxLevel!).toBeLessThan(5.0);
+  });
+});

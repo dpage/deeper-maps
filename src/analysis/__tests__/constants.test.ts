@@ -15,6 +15,7 @@ describe('default constants', () => {
       madMultiplier: 6,
       madOffsetM: 0.3,
       sessionGapS: 300,
+      globalMadMultiplier: 4,
     });
   });
 

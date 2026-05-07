@@ -39,7 +39,13 @@ function safeScale(values: readonly number[], trimPct: number, n: number): Scale
     return { min: FALLBACK_SCALE.min, max: FALLBACK_SCALE.max, levels: [] };
   }
   const { min, max } = trimmedRange(values, trimPct);
-  const levels = computeContourLevels(values, n);
+  // Only feed values within the trimmed range into level computation so the
+  // colour stops align with the legend's declared min/max. Without this,
+  // tail outliers (e.g. residual lift-outs that survive detectLiftouts)
+  // push level values beyond `max`, and the legend's "max colour" no longer
+  // corresponds to the actual `max` shown in the legend label.
+  const inRange = values.filter((v) => v >= min && v <= max);
+  const levels = computeContourLevels(inRange, n);
   return { min, max, levels };
 }
 

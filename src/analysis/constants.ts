@@ -12,6 +12,7 @@ export const DEFAULT_LIFTOUT_OPTIONS: LiftoutOptions = {
   madMultiplier: 6,
   madOffsetM: 0.3,
   sessionGapS: 300,
+  globalMadMultiplier: 4,
 };
 
 export const DEFAULT_SONAR_OPTIONS: SonarOptions = {

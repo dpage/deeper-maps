@@ -65,6 +65,7 @@ describe('detectLiftouts', () => {
       madMultiplier: 6,
       madOffsetM: 0.3,
       sessionGapS: 300,
+      globalMadMultiplier: 4,
     });
     expect(flags[5]).toBe(true);
     expect(flags.filter(Boolean)).toHaveLength(1);
@@ -84,6 +85,7 @@ describe('detectLiftouts', () => {
       madMultiplier: 6,
       madOffsetM: 0.3,
       sessionGapS: 300,
+      globalMadMultiplier: 4,
     });
     expect(flags[25]).toBe(true);
   });
@@ -101,6 +103,7 @@ describe('detectLiftouts', () => {
       madMultiplier: 6,
       madOffsetM: 0.3,
       sessionGapS: 300,
+      globalMadMultiplier: 4,
     });
     expect(flags.filter(Boolean)).toHaveLength(0);
   });
@@ -122,6 +125,7 @@ describe('detectLiftouts', () => {
       madMultiplier: 6,
       madOffsetM: 0.3,
       sessionGapS: 300,
+      globalMadMultiplier: 4,
     });
     // Spike sits inside the second session, not the first.
     expect(flags[45]).toBe(true);
@@ -143,6 +147,7 @@ describe('detectLiftouts', () => {
       madMultiplier: 6,
       madOffsetM: 0.3,
       sessionGapS: 300,
+      globalMadMultiplier: 4,
     });
     expect(flags[6]).toBe(true);
     // Other rows in the session should not be flagged.
@@ -159,7 +164,125 @@ describe('detectLiftouts', () => {
       madMultiplier: 6,
       madOffsetM: 0.3,
       sessionGapS: 300,
+      globalMadMultiplier: 4,
     });
     expect(flags.filter(Boolean)).toHaveLength(0);
+  });
+
+  it('flags sustained lift-out cluster the rolling-median pass misses', () => {
+    // 100 rows: 70 at 1.2 m (real depth), then 30 consecutive rows at 4.5 m
+    // (sustained lift-out — boat parked on the bank). The 30 sustained rows
+    // pollute their own rolling-31 window, so the per-session pass alone
+    // can't distinguish them from "real" data. The global-MAD third pass,
+    // operating on the survivor distribution, must catch them.
+    const rows = makeBath({
+      n: 100,
+      mutator: (r, i) => {
+        r.depth_m = i < 70 ? 1.2 : 4.5;
+      },
+    });
+    const flags = detectLiftouts(rows, {
+      hardThresholdM: 5,
+      rollingWindow: 31,
+      madMultiplier: 6,
+      madOffsetM: 0.3,
+      sessionGapS: 300,
+      globalMadMultiplier: 4,
+    });
+    for (let i = 70; i < 100; i++) {
+      expect(flags[i], `row ${i} (sustained lift-out at 4.5m) should be flagged`).toBe(true);
+    }
+  });
+
+  it('converges via iteration for multi-modal lift-outs', () => {
+    // 60 real (1.5 m), 20 mild lift-out (3.0 m), 20 sustained heavier
+    // lift-out (4.5 m). One global iteration alone might not flag the 3.0 m
+    // bracket because the 4.5 m tier inflates the initial MAD estimate; the
+    // iteration loop must shrink the survivor set, recompute, and catch it.
+    const rows = makeBath({
+      n: 100,
+      mutator: (r, i) => {
+        if (i < 60) r.depth_m = 1.5;
+        else if (i < 80) r.depth_m = 3.0;
+        else r.depth_m = 4.5;
+      },
+    });
+    const flags = detectLiftouts(rows, {
+      hardThresholdM: 5,
+      rollingWindow: 31,
+      madMultiplier: 6,
+      madOffsetM: 0.3,
+      sessionGapS: 300,
+      globalMadMultiplier: 4,
+    });
+    for (let i = 60; i < 100; i++) {
+      expect(flags[i], `row ${i} (lift-out cluster) should be flagged after iteration`).toBe(true);
+    }
+  });
+
+  it('globalMadMultiplier=Infinity disables the global pass', () => {
+    // Same input as the sustained-cluster test: with globalMadMultiplier
+    // effectively disabled, only the existing two passes' flags remain. The
+    // sustained cluster pollutes its own rolling window, so the per-session
+    // pass alone leaves most or all of those rows unflagged. Documents how a
+    // user opts out of the new behaviour.
+    const rows = makeBath({
+      n: 100,
+      mutator: (r, i) => {
+        r.depth_m = i < 70 ? 1.2 : 4.5;
+      },
+    });
+    const flags = detectLiftouts(rows, {
+      hardThresholdM: 5,
+      rollingWindow: 31,
+      madMultiplier: 6,
+      madOffsetM: 0.3,
+      sessionGapS: 300,
+      globalMadMultiplier: Infinity,
+    });
+    // Sustained cluster largely survives — at least the centre of the cluster
+    // (where the rolling window sees only lift-out values) is unflagged.
+    expect(flags[85]).toBe(false);
+    expect(flags[90]).toBe(false);
+  });
+
+  it('globalMadMultiplier does not flag real shallow values below median', () => {
+    // Two-tier real depth distribution: a deep tier (~3.0 m) and a shallow
+    // tier (~1.5 m). The shallow tier's depths sit BELOW the global median
+    // and could in principle be flagged by a symmetric (|d - median|)
+    // global-MAD gate. The above-median gate must leave them alone.
+    //
+    // Setup avoids tripping the per-session rolling-median pass by giving
+    // both tiers similar amounts of data (35 each) and a transition zone
+    // that gradually steps between them — pass 2's local rolling window
+    // therefore never sees the shallow tier as "an outlier vs the local
+    // median".
+    //
+    // Lift-outs always read DEEPER than reality (boat in air or pinging the
+    // bank); a too-shallow reading is a real shallow spot, not a lift-out.
+    const rows = makeBath({
+      n: 100,
+      mutator: (r, i) => {
+        // 0-34: shallow tier ~1.5 m. 35-64: gradual transition. 65-99: deep
+        // tier ~3.0 m. The transition keeps the rolling median continuous.
+        if (i < 35) r.depth_m = 1.5 + (i % 5) * 0.02;
+        else if (i < 65) r.depth_m = 1.5 + ((i - 35) / 30) * 1.5;
+        else r.depth_m = 3.0 + (i % 5) * 0.02;
+      },
+    });
+    const flags = detectLiftouts(rows, {
+      hardThresholdM: 5,
+      rollingWindow: 31,
+      madMultiplier: 6,
+      madOffsetM: 0.3,
+      sessionGapS: 300,
+      globalMadMultiplier: 1, // very aggressive — would catch shallow rows if symmetric
+    });
+    // The shallow tier (rows 0..34) sits well below the global median (~2.5
+    // m); a symmetric global-MAD pass would flag them. The above-median
+    // gate must NOT.
+    for (let i = 0; i < 35; i++) {
+      expect(flags[i], `row ${i} (real shallow ping below median) must NOT be flagged`).toBe(false);
+    }
   });
 });
