@@ -76,6 +76,18 @@ export function MapView(): JSX.Element {
   const activeScanId = useDeeperMapsStore((s) => s.activeScanId);
   const scans = useDeeperMapsStore((s) => s.scans);
   const activeScan = activeScanId ? scans[activeScanId] : undefined;
+  const frameRequestSeq = useDeeperMapsStore((s) => s.frameRequestSeq);
+
+  // The store bumps `frameRequestSeq` every time the user picks a scan
+  // (`setActiveScan` or `saveAndAnalyse`), regardless of whether the active id
+  // actually changed. Reset `lastFramedScanIdRef` so the next layerBundle
+  // effect snaps the camera back — this restores reframing on re-selection of
+  // the already-active scan (e.g. user clicks the same scan a second time).
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  useEffect(() => {
+    lastFramedScanIdRef.current = null;
+  }, [frameRequestSeq]);
+  /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
   /**

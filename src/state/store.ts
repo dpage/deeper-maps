@@ -20,6 +20,15 @@ export interface DeeperMapsState {
   layerBundle: LayerBundle | null;
   progress: { stage: PipelineStage; processed: number; total: number } | null;
   warnings: string[];
+  /**
+   * Monotonic counter that increments every time the user explicitly requests a
+   * scan be (re)framed — i.e. every `setActiveScan` and `saveAndAnalyse` call,
+   * regardless of whether the active id actually changed. MapView observes this
+   * and resets its `lastFramedScanIdRef` so the next layerBundle update fires
+   * `fitBounds`. Without this, re-selecting the same active scan would not
+   * snap the camera back (lastFramedScanIdRef already matches activeScanId).
+   */
+  frameRequestSeq: number;
 
   hydrate: () => Promise<void>;
   setActiveScan: (id: string | null) => Promise<void>;
@@ -85,26 +94,55 @@ export function __attachWorkerListener(): void {
 
 export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
   // Listen for worker responses; route them into the store.
+  //
+  // Every response is filtered by `m.scanId === get().activeScanId` so that a
+  // late-arriving result from a scan the user has navigated away from cannot
+  // pollute the active scan's UI state. (The cache write inside `layerBundle`
+  // intentionally runs UNCONDITIONALLY: the worker did the work and the user
+  // gets a fast cache-hit when they come back to that scan later.)
   onMessageListener = (e: MessageEvent<WorkerResponse>) => {
     const m = e.data;
+    const isForActiveScan = m.scanId === get().activeScanId;
+
     if (m.kind === 'progress') {
-      set({ progress: { stage: m.stage, processed: m.processed, total: m.total } });
-    } else if (m.kind === 'layerBundle') {
-      set({ layerBundle: m.bundle, progress: null, warnings: m.warnings });
+      if (isForActiveScan) {
+        set({ progress: { stage: m.stage, processed: m.processed, total: m.total } });
+      }
+      return;
+    }
+
+    if (m.kind === 'layerBundle') {
+      // Cache the result regardless of whether the scan is still active —
+      // the worker did the work; persist it so the user gets a fast cache-hit
+      // when they navigate back.
       void saveScanResults({
         scanId: m.scanId,
         bundleVersion: 1,
         builtAt: Date.now(),
         bundle: m.bundle,
       });
-    } else if (m.kind === 'error') {
-      set({ progress: null, warnings: [m.message] });
-    } else if (m.kind === 'cancelled') {
+      if (isForActiveScan) {
+        set({ layerBundle: m.bundle, progress: null, warnings: m.warnings });
+      }
+      return;
+    }
+
+    if (m.kind === 'error') {
+      if (isForActiveScan) {
+        set({ progress: null, warnings: [m.message] });
+      }
+      return;
+    }
+
+    if (m.kind === 'cancelled') {
       // Cancellation: clear progress but leave the previously-rendered bundle
       // and warnings untouched. The user explicitly invalidated the in-flight
       // computation (e.g. by tweaking a threshold mid-flight); they should not
       // see this surfaced as an error.
-      set({ progress: null });
+      if (isForActiveScan) {
+        set({ progress: null });
+      }
+      return;
     }
   };
   // Subscribe lazily (worker may not be ready yet at module-eval time).
@@ -118,6 +156,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     layerBundle: null,
     progress: null,
     warnings: [],
+    frameRequestSeq: 0,
 
     async hydrate() {
       // TODO(spec §8.3): on `openDeeperMapsDb` failure (Safari private mode,
@@ -131,7 +170,20 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     },
 
     async setActiveScan(id) {
-      set({ activeScanId: id, layerBundle: null, progress: null });
+      // Cancel any in-flight worker job for the previous scan so we don't keep
+      // chewing through irrelevant work AND we don't widen the window during
+      // which a stale layerBundle might race in. The cancel is a no-op for
+      // scans that have already finished.
+      const prev = get().activeScanId;
+      if (prev && prev !== id) {
+        dispatchToWorker({ kind: 'cancel', scanId: prev });
+      }
+      set((s) => ({
+        activeScanId: id,
+        layerBundle: null,
+        progress: null,
+        frameRequestSeq: s.frameRequestSeq + 1,
+      }));
       if (!id) return;
       const scan = get().scans[id];
       if (!scan) return;
@@ -163,6 +215,14 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     },
 
     async saveAndAnalyse(scan, rawFiles) {
+      // Cancel the previous in-flight worker job so it doesn't race with the
+      // new analyse for the new scan (and its eventual layerBundle would be
+      // dropped at the store boundary anyway thanks to the message-listener
+      // filter).
+      const prev = get().activeScanId;
+      if (prev && prev !== scan.id) {
+        dispatchToWorker({ kind: 'cancel', scanId: prev });
+      }
       await saveScan(scan, rawFiles);
       // Clear any previous bundle/progress when a new scan goes active. Without
       // this, MapView's layerBundle effect runs against the OLD bundle while
@@ -174,6 +234,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         activeScanId: scan.id,
         layerBundle: null,
         progress: null,
+        frameRequestSeq: s.frameRequestSeq + 1,
       }));
       const rawBytes = await Promise.all(
         rawFiles.map(async (r) => ({

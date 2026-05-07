@@ -93,6 +93,7 @@ beforeEach(async () => {
     layerBundle: null,
     progress: null,
     warnings: [],
+    frameRequestSeq: 0,
   });
   __resetDebounceTimer();
   // Stub the worker — the store dispatches messages via globalThis.__deeperMapsWorker
@@ -382,10 +383,13 @@ describe('useDeeperMapsStore', () => {
 });
 
 describe('useDeeperMapsStore — worker message routing', () => {
+  const ACTIVE_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
   it('routes a progress message into store.progress', () => {
+    useDeeperMapsStore.setState({ activeScanId: ACTIVE_ID });
     deliverWorkerMessage({
       kind: 'progress',
-      scanId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      scanId: ACTIVE_ID,
       stage: 'parse',
       processed: 3,
       total: 10,
@@ -398,15 +402,15 @@ describe('useDeeperMapsStore — worker message routing', () => {
   });
 
   it('routes a layerBundle message: stores the bundle, clears progress, persists results', async () => {
-    const scanId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     const bundle = emptyBundle();
     useDeeperMapsStore.setState({
+      activeScanId: ACTIVE_ID,
       progress: { stage: 'buildLayers', processed: 1, total: 1 },
     });
 
     deliverWorkerMessage({
       kind: 'layerBundle',
-      scanId,
+      scanId: ACTIVE_ID,
       bundle,
       warnings: ['heads up'],
     });
@@ -417,18 +421,19 @@ describe('useDeeperMapsStore — worker message routing', () => {
 
     // saveScanResults runs as a fire-and-forget; give it a microtask to settle.
     await new Promise<void>((r) => setTimeout(r, 0));
-    const cached = await loadScanResults(scanId);
+    const cached = await loadScanResults(ACTIVE_ID);
     expect(cached?.bundle).toEqual(bundle);
   });
 
   it('routes an error message: clears progress, surfaces the message in warnings', () => {
     useDeeperMapsStore.setState({
+      activeScanId: ACTIVE_ID,
       progress: { stage: 'parse', processed: 1, total: 2 },
     });
 
     deliverWorkerMessage({
       kind: 'error',
-      scanId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      scanId: ACTIVE_ID,
       message: 'parse failed',
     });
 
@@ -439,6 +444,7 @@ describe('useDeeperMapsStore — worker message routing', () => {
   it('routes a cancelled message: clears progress, leaves bundle and warnings untouched', () => {
     const bundle = emptyBundle();
     useDeeperMapsStore.setState({
+      activeScanId: ACTIVE_ID,
       progress: { stage: 'parse', processed: 1, total: 2 },
       layerBundle: bundle,
       warnings: ['existing'],
@@ -446,13 +452,173 @@ describe('useDeeperMapsStore — worker message routing', () => {
 
     deliverWorkerMessage({
       kind: 'cancelled',
-      scanId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      scanId: ACTIVE_ID,
     });
 
     const s = useDeeperMapsStore.getState();
     expect(s.progress).toBeNull();
     expect(s.layerBundle).toBe(bundle);
     expect(s.warnings).toEqual(['existing']);
+  });
+
+  it('drops a stale layerBundle that arrives after the user switched scans', async () => {
+    const aId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const bId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const activeBundle = emptyBundle();
+    // Active scan is A; a stale layerBundle arrives for B (the worker was
+    // working on B before the user navigated to A).
+    useDeeperMapsStore.setState({
+      activeScanId: aId,
+      layerBundle: activeBundle,
+      warnings: [],
+    });
+
+    const staleBundle: LayerBundle = {
+      bathymetry: { type: 'FeatureCollection', features: [] },
+      weed: { type: 'FeatureCollection', features: [] },
+      fishDensity: { type: 'FeatureCollection', features: [] },
+      sweetSpots: { type: 'FeatureCollection', features: [] },
+      scales: {
+        depth: { min: 99, max: 100 },
+        weed: { min: 0, max: 1 },
+        fishRate: { min: 0, max: 1 },
+      },
+      bounds: null,
+    };
+    deliverWorkerMessage({
+      kind: 'layerBundle',
+      scanId: bId,
+      bundle: staleBundle,
+      warnings: ['stale'],
+    });
+
+    // Active scan's view is untouched.
+    const s = useDeeperMapsStore.getState();
+    expect(s.activeScanId).toBe(aId);
+    expect(s.layerBundle).toBe(activeBundle);
+    expect(s.warnings).toEqual([]);
+
+    // BUT the stale bundle was still cached for B — the worker did the work,
+    // we want the cache-hit when the user comes back.
+    await new Promise<void>((r) => setTimeout(r, 0));
+    const cached = await loadScanResults(bId);
+    expect(cached?.bundle).toEqual(staleBundle);
+  });
+
+  it('drops a stale progress message that arrives for a non-active scan', () => {
+    const aId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const bId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    useDeeperMapsStore.setState({ activeScanId: aId, progress: null });
+
+    deliverWorkerMessage({
+      kind: 'progress',
+      scanId: bId,
+      stage: 'parse',
+      processed: 3,
+      total: 10,
+    });
+
+    expect(useDeeperMapsStore.getState().progress).toBeNull();
+  });
+});
+
+describe('useDeeperMapsStore — cancellation on scan switch', () => {
+  it("saveAndAnalyse cancels the previous scan's in-flight job", async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    const b = makeScan('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'B', 'hashB');
+    useDeeperMapsStore.setState({ activeScanId: a.id });
+    const post = getStubbedPostMessage();
+    post.mockClear();
+
+    const blob = new NodeBlob([new Uint8Array([1, 2, 3])]) as unknown as Blob;
+    await useDeeperMapsStore.getState().saveAndAnalyse(b, [{ fileName: 'bathymetry.csv', blob }]);
+
+    // First dispatch is the cancel for A; later we get the analyse for B.
+    expect(post.mock.calls[0]?.[0]).toEqual({ kind: 'cancel', scanId: a.id });
+    const analyseCalls = post.mock.calls.filter(
+      (c) => (c[0] as { kind: string }).kind === 'analyse',
+    );
+    expect(analyseCalls).toHaveLength(1);
+    expect(analyseCalls[0]?.[0]).toMatchObject({ kind: 'analyse', scanId: b.id });
+    // Cancel happened before analyse.
+    const cancelIdx = post.mock.calls.findIndex(
+      (c) => (c[0] as { kind: string }).kind === 'cancel',
+    );
+    const analyseIdx = post.mock.calls.findIndex(
+      (c) => (c[0] as { kind: string }).kind === 'analyse',
+    );
+    expect(cancelIdx).toBeLessThan(analyseIdx);
+  });
+
+  it("setActiveScan cancels the previous scan's in-flight job", async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    const b = makeScan('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'B', 'hashB');
+    await saveScan(a, []);
+    await saveScan(b, []);
+    await useDeeperMapsStore.getState().hydrate();
+    useDeeperMapsStore.setState({ activeScanId: a.id });
+    const post = getStubbedPostMessage();
+    post.mockClear();
+
+    await useDeeperMapsStore.getState().setActiveScan(b.id);
+
+    // First dispatch is the cancel for A.
+    expect(post.mock.calls[0]?.[0]).toEqual({ kind: 'cancel', scanId: a.id });
+  });
+
+  it('saveAndAnalyse does NOT cancel when there is no previous active scan', async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    expect(useDeeperMapsStore.getState().activeScanId).toBeNull();
+    const post = getStubbedPostMessage();
+    post.mockClear();
+
+    const blob = new NodeBlob([new Uint8Array([1, 2, 3])]) as unknown as Blob;
+    await useDeeperMapsStore.getState().saveAndAnalyse(a, [{ fileName: 'bathymetry.csv', blob }]);
+
+    const cancelCalls = post.mock.calls.filter((c) => (c[0] as { kind: string }).kind === 'cancel');
+    expect(cancelCalls).toHaveLength(0);
+  });
+
+  it('setActiveScan does NOT cancel when re-selecting the same scan', async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    await saveScan(a, []);
+    await useDeeperMapsStore.getState().hydrate();
+    useDeeperMapsStore.setState({ activeScanId: a.id });
+    const post = getStubbedPostMessage();
+    post.mockClear();
+
+    await useDeeperMapsStore.getState().setActiveScan(a.id);
+
+    const cancelCalls = post.mock.calls.filter((c) => (c[0] as { kind: string }).kind === 'cancel');
+    expect(cancelCalls).toHaveLength(0);
+  });
+});
+
+describe('useDeeperMapsStore — frameRequestSeq', () => {
+  it('setActiveScan increments frameRequestSeq even when re-selecting the same id', async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    await saveScan(a, []);
+    await useDeeperMapsStore.getState().hydrate();
+
+    expect(useDeeperMapsStore.getState().frameRequestSeq).toBe(0);
+
+    await useDeeperMapsStore.getState().setActiveScan(a.id);
+    const afterFirst = useDeeperMapsStore.getState().frameRequestSeq;
+    expect(afterFirst).toBe(1);
+
+    // Re-select the SAME scan: seq still increments so MapView reframes.
+    await useDeeperMapsStore.getState().setActiveScan(a.id);
+    expect(useDeeperMapsStore.getState().frameRequestSeq).toBe(2);
+  });
+
+  it('saveAndAnalyse increments frameRequestSeq', async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    expect(useDeeperMapsStore.getState().frameRequestSeq).toBe(0);
+
+    const blob = new NodeBlob([new Uint8Array([1, 2, 3])]) as unknown as Blob;
+    await useDeeperMapsStore.getState().saveAndAnalyse(a, [{ fileName: 'bathymetry.csv', blob }]);
+
+    expect(useDeeperMapsStore.getState().frameRequestSeq).toBe(1);
   });
 });
 
