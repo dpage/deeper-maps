@@ -4,7 +4,13 @@ Writes:
   - test/fixtures/reference-bath.csv
   - test/fixtures/reference-sonar.csv
   - test/fixtures/reference-snapshot.json  (cell rows, sorted by cx/cy)
+
 This script runs ONCE and its output is committed; tests do not invoke it.
+
+Requires `deeper_analysis.py` at the repo root. That file is gitignored
+(personal handoff material kept locally for reference); a fresh clone
+will not have it. Re-running this script is only relevant if the Python
+reference itself changes.
 """
 import csv, json, math, sys, pathlib, random
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))

@@ -8,6 +8,19 @@ sample-scans/
 # Local screen captures used to triage user-reported bugs; not for commit
 screen-captures/
 
+# Starting-point reference materials (personal handoff docs from project
+# kickoff; the implementation has long since superseded them and they're
+# kept locally for reference only — not for public commit).
+HANDOFF.md
+deeper_analysis.py
+lake_full_analysis.png
+sweet_spots.csv
+
+# Environment files (defensive — we don't use them but standard hygiene)
+.env
+.env.*
+!.env.example
+
 # Common
 .DS_Store
 

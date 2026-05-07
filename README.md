@@ -46,8 +46,6 @@ CI runs typecheck, lint, format check, the full test suite, the build, AND Playw
 
 ## Architecture
 
-See `.claude/specs/2026-05-05-deeper-maps-design.md` for the full design.
-
 ```
 src/analysis/   Pure-functional pipeline (parser + 6 staged pipeline functions). No React/DOM/MapLibre/storage.
 src/worker/     Web Worker hosting the pipeline; memoised stage cache; cancellation support.
@@ -58,14 +56,7 @@ src/ui/         MUI components: layout, header, scan library, upload dialog, con
 src/lib/        SHA-256 helpers (Web Crypto).
 ```
 
-## Reference materials
-
-- `HANDOFF.md` — domain explainer for Deeper sonar data.
-- `deeper_analysis.py` — Python reference implementation that the `analysis/` tree ports byte-for-byte (validated by a snapshot test).
-- `lake_full_analysis.png` — example output rendering.
-- `sweet_spots.csv` — sample categorised cell output.
-- `TODO.md` — features deferred to v2.
-- `sample-scans/` — gitignored, your local scans.
+See `TODO.md` for the v2 deferral list. `sample-scans/` is gitignored — drop your own Quest exports there for local testing.
 
 ## Licence
 
