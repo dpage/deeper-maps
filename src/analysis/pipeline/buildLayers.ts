@@ -5,6 +5,7 @@ import type {
   CleanBath,
   ColorScaleOptions,
   LayerBundle,
+  LayerScales,
   ScaleRange,
   ScanCategory,
 } from '../types';
@@ -17,6 +18,8 @@ const WEED_GRID_M = 2;
 const BATHYMETRY_CONTOUR_LEVELS = 12;
 const WEED_CONTOUR_LEVELS = 8;
 const FISH_DENSITY_COLOR_STOPS = 9;
+const TEMPERATURE_GRID_M = 2;
+const TEMPERATURE_CONTOUR_LEVELS = 8;
 const IDW_K_NEAREST = 4;
 const IDW_RADIUS_M = 5;
 const METRES_PER_DEG_LAT = 111000;
@@ -191,6 +194,62 @@ function buildWeedContours(cells: CategorisedCells, scale: ScaleRange): FeatureC
   return { type: 'FeatureCollection', features };
 }
 
+function buildTemperatureContours(
+  cells: CategorisedCells,
+  scale: ScaleRange,
+): FeatureCollection {
+  const tempCells = cells.rows.filter((c) => c.mean_temp_c !== undefined);
+  if (tempCells.length === 0) return emptyFc();
+  const anchor = projectionFromCells(cells);
+  const lonMetresPerDeg = METRES_PER_DEG_LAT * Math.cos((anchor.meanLat * Math.PI) / 180);
+
+  const points = tempCells.map((c) => ({
+    x: c.cx,
+    y: c.cy,
+    v: c.mean_temp_c!,
+  }));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+
+  const grid = buildIdwGrid(points, {
+    cellSize: TEMPERATURE_GRID_M,
+    kNearest: IDW_K_NEAREST,
+    radius: IDW_RADIUS_M,
+    minX,
+    minY,
+    maxX,
+    maxY,
+  });
+
+  const fc = buildContourFeatures(grid, scale.levels);
+
+  const features: Feature<MultiPolygon, { level: number }>[] = fc.features.map((f) => ({
+    type: 'Feature' as const,
+    geometry: {
+      type: 'MultiPolygon' as const,
+      coordinates: f.geometry.coordinates.map((poly) =>
+        poly.map((ring) =>
+          ring.map(([xm, ym]) => [
+            anchor.lon0 + (xm ?? 0) / lonMetresPerDeg,
+            anchor.lat0 + (ym ?? 0) / METRES_PER_DEG_LAT,
+          ]),
+        ),
+      ),
+    },
+    properties: { level: f.properties.level },
+  }));
+
+  return { type: 'FeatureCollection', features };
+}
+
 /**
  * Convert a `MultiPolygon` FeatureCollection into a `MultiLineString`
  * FeatureCollection by extracting each ring of every polygon as a single
@@ -296,12 +355,15 @@ export function buildLayers(
   const depths = clean.rows.map((r) => r.depth_m);
   const weeds = cells.rows.map((c) => c.mean_weed);
   const fishRates = cells.rows.map((c) => c.fish_rate);
+  const temps = cells.rows
+    .map((c) => c.mean_temp_c)
+    .filter((v): v is number => v !== undefined);
 
-  const scales = {
+  const scales: LayerScales = {
     depth: safeScale(depths, colorScale.outlierTrimPct, BATHYMETRY_CONTOUR_LEVELS),
     weed: safeScale(weeds, colorScale.outlierTrimPct, WEED_CONTOUR_LEVELS),
     fishRate: safeScale(fishRates, colorScale.outlierTrimPct, FISH_DENSITY_COLOR_STOPS),
-    temperature: { min: 0, max: 1, levels: [] as number[] },
+    temperature: safeScale(temps, colorScale.outlierTrimPct, TEMPERATURE_CONTOUR_LEVELS),
   };
 
   const weed = buildWeedContours(cells, scales.weed);
@@ -314,7 +376,7 @@ export function buildLayers(
     bathymetryLines,
     fishDensity: buildFishDensity(cells),
     sweetSpots: buildSweetSpots(cells),
-    temperature: emptyFc(),
+    temperature: buildTemperatureContours(cells, scales.temperature),
     scales,
     bounds: computeBounds(clean),
     tempStats: computeTempStats(clean),

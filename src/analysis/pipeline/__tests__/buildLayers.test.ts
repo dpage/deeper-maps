@@ -265,6 +265,59 @@ describe('buildLayers — tempStats', () => {
   });
 });
 
+describe('buildLayers — temperature contours', () => {
+  it('returns an empty FC when no cells have mean_temp_c', () => {
+    const cells: CategorisedCells = {
+      cellSizeM: 2,
+      origin: { lat: 51.7, lon: -1.43 },
+      rows: [
+        {
+          cx: 0, cy: 0, lat: 51.7, lon: -1.43,
+          n_pings: 5, mean_depth: 2, mean_weed: 0,
+          fish_rate: 0, bottom_hardness: 0,
+          category: 'none',
+        },
+      ],
+    };
+    const lb = buildLayers(emptyClean, cells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.temperature.features).toHaveLength(0);
+    expect(lb.scales.temperature.levels).toHaveLength(0);
+  });
+
+  it('builds contour features when cells have mean_temp_c', () => {
+    // Build a 5x5 grid of cells with a north-south temperature gradient (12°C
+    // at south, 18°C at north). Should produce a few contour bands.
+    const rows = [];
+    for (let iy = 0; iy < 5; iy++) {
+      for (let ix = 0; ix < 5; ix++) {
+        rows.push({
+          cx: ix * 2,
+          cy: iy * 2,
+          lat: 51.7 + iy * 0.0001,
+          lon: -1.43 + ix * 0.0001,
+          n_pings: 5,
+          mean_depth: 2,
+          mean_weed: 0,
+          fish_rate: 0,
+          bottom_hardness: 0,
+          mean_temp_c: 12 + (iy / 4) * 6,   // 12, 13.5, 15, 16.5, 18
+          category: 'none' as const,
+        });
+      }
+    }
+    const cells: CategorisedCells = {
+      cellSizeM: 2,
+      origin: { lat: 51.7, lon: -1.43 },
+      rows,
+    };
+    const lb = buildLayers(emptyClean, cells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.temperature.features.length).toBeGreaterThan(0);
+    expect(lb.scales.temperature.min).toBeCloseTo(12, 1);
+    expect(lb.scales.temperature.max).toBeCloseTo(18, 1);
+    expect(lb.scales.temperature.levels.length).toBeGreaterThan(0);
+  });
+});
+
 describe('buildLayers — colour-scale levels stay within the trimmed range', () => {
   it('depth levels do not exceed scales.depth.max even when an outlier is present', () => {
     // 5 depths, the last one a clear outlier. With outlierTrimPct=1.0 (the
