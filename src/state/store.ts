@@ -14,6 +14,18 @@ import type { PipelineStage, WorkerRequest, WorkerResponse } from '../worker/pro
 
 const DEBOUNCE_MS = 200;
 
+const LAYER_VISIBILITY_DEFAULTS: LayerVisibility = {
+  bathymetry: true,
+  weed: true,
+  fishDensity: true,
+  sweetSpots: true,
+  temperature: false,
+};
+
+function normaliseLayerVisibility(v: Partial<LayerVisibility> | undefined): LayerVisibility {
+  return { ...LAYER_VISIBILITY_DEFAULTS, ...(v ?? {}) };
+}
+
 const BASE_LAYER_KEY = 'deeper-maps:baseLayer';
 
 function loadBaseLayer(): BaseLayerId {
@@ -192,7 +204,9 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       // which Plan 3's ErrorBoundary catches.
       const list = await dbListScans();
       const byId: Record<string, StoredScan> = {};
-      for (const s of list) byId[s.id] = s;
+      for (const s of list) {
+        byId[s.id] = { ...s, layerVisibility: normaliseLayerVisibility(s.layerVisibility) };
+      }
       set({ scans: byId });
     },
 

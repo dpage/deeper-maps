@@ -113,6 +113,28 @@ afterEach(async () => {
 });
 
 describe('useDeeperMapsStore', () => {
+  it('hydrate fills missing layerVisibility.temperature with false', async () => {
+    const legacyScan = {
+      id: 'legacy-1',
+      name: 'legacy',
+      deviceType: 'quest' as const,
+      contentHash: 'h',
+      createdAt: 0,
+      updatedAt: 0,
+      fileMeta: [],
+      thresholds: DEFAULT_THRESHOLDS,
+      layerVisibility: {
+        bathymetry: true, weed: true, fishDensity: true, sweetSpots: true,
+      },
+    } as unknown as StoredScan;
+    await saveScan(legacyScan, []);
+
+    await useDeeperMapsStore.getState().hydrate();
+    const hydrated = useDeeperMapsStore.getState().scans['legacy-1'];
+    expect(hydrated?.layerVisibility.temperature).toBe(false);
+    expect(hydrated?.layerVisibility.bathymetry).toBe(true);
+  });
+
   it('hydrate() loads the persisted scans index', async () => {
     const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Old', 'hashA');
     const b = makeScan('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Recent', 'hashB');
