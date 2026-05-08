@@ -9,7 +9,7 @@ import type {
   ScaleRange,
   ScanCategory,
 } from '../types';
-import { buildContourFeatures } from './contours';
+import { buildContourFeatures, toExclusiveBands } from './contours';
 import { buildIdwGrid } from './grid';
 
 const FALLBACK_SCALE = { min: 0, max: 1 } as const;
@@ -229,7 +229,8 @@ function buildTemperatureContours(
     maxY,
   });
 
-  const fc = buildContourFeatures(grid, scale.levels);
+  const rawFc = buildContourFeatures(grid, scale.levels);
+  const fc = toExclusiveBands(rawFc);
 
   const features: Feature<MultiPolygon, { level: number }>[] = fc.features.map((f) => ({
     type: 'Feature' as const,

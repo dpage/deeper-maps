@@ -1,5 +1,6 @@
 import { contours } from 'd3-contour';
 import type { Feature, FeatureCollection, MultiPolygon } from 'geojson';
+import polygonClipping from 'polygon-clipping';
 import type { IdwGrid } from './grid';
 
 interface D3MultiPolygon {
@@ -43,4 +44,54 @@ export function buildContourFeatures(
   }));
 
   return { type: 'FeatureCollection', features };
+}
+
+/**
+ * Convert d3-contour's nested MultiPolygon features (where each level covers
+ * value >= threshold) into exclusive annular bands so each grid pixel is
+ * covered by exactly one polygon.
+ *
+ * The input features must be sorted by level ascending (d3-contour always
+ * produces them in that order). Each level k polygon is clipped by subtracting
+ * the next higher level's polygon from it, producing a ring (possibly with
+ * holes). The highest level is left unchanged.
+ */
+export function toExclusiveBands(
+  fc: FeatureCollection<MultiPolygon, { level: number }>,
+): FeatureCollection<MultiPolygon, { level: number }> {
+  const sorted = [...fc.features].sort((a, b) => a.properties.level - b.properties.level);
+  const out: Feature<MultiPolygon, { level: number }>[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    const f = sorted[i]!;
+
+    // Highest level: pass through unchanged.
+    if (i === sorted.length - 1) {
+      out.push(f);
+      continue;
+    }
+
+    const next = sorted[i + 1]!;
+
+    // polygon-clipping expects Polygon | MultiPolygon in its own Pair-based
+    // coordinate format. GeoJSON [number, number][] is structurally compatible.
+    const diff = polygonClipping.difference(
+      f.geometry.coordinates as unknown as polygonClipping.MultiPolygon,
+      next.geometry.coordinates as unknown as polygonClipping.MultiPolygon,
+    );
+
+    // Nothing left after subtraction — skip this level.
+    if (diff.length === 0) continue;
+
+    out.push({
+      type: 'Feature',
+      geometry: {
+        type: 'MultiPolygon',
+        coordinates: diff,
+      },
+      properties: { level: f.properties.level },
+    });
+  }
+
+  return { type: 'FeatureCollection', features: out };
 }
