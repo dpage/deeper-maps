@@ -7,6 +7,7 @@ const LABELS: Record<keyof LayerVisibility, string> = {
   weed: 'Weed',
   fishDensity: 'Fish density',
   sweetSpots: 'Sweet spots',
+  temperature: 'Temperature',
 };
 
 export interface LayerControlsProps {

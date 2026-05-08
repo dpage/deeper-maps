@@ -87,7 +87,7 @@ export function UploadDialog({ open, onClose }: UploadDialogProps): JSX.Element 
         updatedAt: Date.now(),
         fileMeta: [{ name: file.name, byteSize: file.size, sha256: hash }],
         thresholds: DEFAULT_THRESHOLDS,
-        layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
+        layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true, temperature: false },
       };
       await saveAndAnalyse(scan, [{ fileName: file.name, blob: file }]);
       handleClose();

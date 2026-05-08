@@ -13,8 +13,9 @@ import type { FeatureCollection } from 'geojson';
  *   3 — adds `weedLines` field for line-style weed-over-bathymetry rendering.
  *   4 — replace weedLines with bathymetryLines for line-style bathymetry-over-weed rendering.
  *   5 — adds quantile-based `levels` to LayerScales for non-linear colour mapping.
+ *   6 — adds `temperature` field + `tempStats` (commit <this PR>)
  */
-export const CURRENT_BUNDLE_VERSION = 5;
+export const CURRENT_BUNDLE_VERSION = 6;
 
 export interface LiftoutOptions {
   hardThresholdM: number;
@@ -163,6 +164,12 @@ export interface LayerScales {
   depth: ScaleRange;
   weed: ScaleRange;
   fishRate: ScaleRange;
+  /**
+   * Trimmed range + quantile contour levels for the temperature overlay.
+   * Empty (`{min:0,max:1,levels:[]}`) when the scan has no cells with
+   * `mean_temp_c` defined (e.g. older 4-column Quest exports).
+   */
+  temperature: ScaleRange;
 }
 
 export interface LayerBundle {
@@ -178,6 +185,11 @@ export interface LayerBundle {
   bathymetryLines: FeatureCollection;
   fishDensity: FeatureCollection;
   sweetSpots: FeatureCollection;
+  /**
+   * Filled MultiPolygon contours over `mean_temp_c`. Empty when the scan
+   * has no cells with temperature data.
+   */
+  temperature: FeatureCollection;
   scales: LayerScales;
   /**
    * Geographic bounding box of the scan's actual data, derived from
@@ -186,4 +198,9 @@ export interface LayerBundle {
    * produced no rows — consumers should fall back to a default centre.
    */
   bounds: { sw: [number, number]; ne: [number, number] } | null;
+  /**
+   * Raw min/mean/max over `clean.rows[*].temp_c` (NOT trimmed). Drives the
+   * panel display. `null` when no clean row has a defined `temp_c`.
+   */
+  tempStats: { min: number; mean: number; max: number } | null;
 }

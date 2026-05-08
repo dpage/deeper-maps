@@ -286,6 +286,7 @@ export function buildLayers(
     depth: safeScale(depths, colorScale.outlierTrimPct, BATHYMETRY_CONTOUR_LEVELS),
     weed: safeScale(weeds, colorScale.outlierTrimPct, WEED_CONTOUR_LEVELS),
     fishRate: safeScale(fishRates, colorScale.outlierTrimPct, FISH_DENSITY_COLOR_STOPS),
+    temperature: { min: 0, max: 1, levels: [] as number[] },
   };
 
   const weed = buildWeedContours(cells, scales.weed);
@@ -298,7 +299,9 @@ export function buildLayers(
     bathymetryLines,
     fishDensity: buildFishDensity(cells),
     sweetSpots: buildSweetSpots(cells),
+    temperature: emptyFc(),
     scales,
     bounds: computeBounds(clean),
+    tempStats: null,
   };
 }

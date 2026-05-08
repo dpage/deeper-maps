@@ -37,7 +37,7 @@ function makeScan(id: string, name: string, contentHash: string): StoredScan {
     updatedAt: 1700000000000,
     fileMeta: [],
     thresholds: DEFAULT_THRESHOLDS,
-    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
+    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true, temperature: false },
   };
 }
 
@@ -48,12 +48,15 @@ function emptyBundle(): LayerBundle {
     bathymetryLines: { type: 'FeatureCollection', features: [] },
     fishDensity: { type: 'FeatureCollection', features: [] },
     sweetSpots: { type: 'FeatureCollection', features: [] },
+    temperature: { type: 'FeatureCollection', features: [] },
     scales: {
       depth: { min: 0, max: 1, levels: [] },
       weed: { min: 0, max: 1, levels: [] },
       fishRate: { min: 0, max: 1, levels: [] },
+      temperature: { min: 0, max: 1, levels: [] },
     },
     bounds: null,
+    tempStats: null,
   };
 }
 
@@ -237,12 +240,15 @@ describe('useDeeperMapsStore', () => {
         bathymetryLines: { type: 'FeatureCollection', features: [] },
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
+        temperature: { type: 'FeatureCollection', features: [] },
         scales: {
           depth: { min: 1, max: 2, levels: [] },
           weed: { min: 0, max: 1, levels: [] },
           fishRate: { min: 0, max: 1, levels: [] },
+          temperature: { min: 0, max: 1, levels: [] },
         },
         bounds: null,
+        tempStats: null,
       },
     });
     await useDeeperMapsStore.getState().hydrate();
@@ -553,12 +559,15 @@ describe('useDeeperMapsStore — worker message routing', () => {
       bathymetryLines: { type: 'FeatureCollection', features: [] },
       fishDensity: { type: 'FeatureCollection', features: [] },
       sweetSpots: { type: 'FeatureCollection', features: [] },
+      temperature: { type: 'FeatureCollection', features: [] },
       scales: {
         depth: { min: 99, max: 100, levels: [] },
         weed: { min: 0, max: 1, levels: [] },
         fishRate: { min: 0, max: 1, levels: [] },
+        temperature: { min: 0, max: 1, levels: [] },
       },
       bounds: null,
+      tempStats: null,
     };
     deliverWorkerMessage({
       kind: 'layerBundle',

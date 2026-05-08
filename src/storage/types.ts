@@ -8,6 +8,7 @@ export interface LayerVisibility {
   weed: boolean;
   fishDensity: boolean;
   sweetSpots: boolean;
+  temperature: boolean;
 }
 
 export interface PersistedFileMeta {

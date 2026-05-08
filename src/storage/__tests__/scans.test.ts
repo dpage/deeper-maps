@@ -38,7 +38,7 @@ function makeScan(overrides: Partial<StoredScan> = {}): StoredScan {
     updatedAt: 1700000000000,
     fileMeta: [{ name: 'bathymetry.csv', byteSize: 1024, sha256: 'hh' }],
     thresholds: DEFAULT_THRESHOLDS,
-    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
+    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true, temperature: false },
     ...overrides,
   };
 }
@@ -113,12 +113,15 @@ describe('scans CRUD', () => {
         bathymetryLines: { type: 'FeatureCollection', features: [] },
         fishDensity: { type: 'FeatureCollection', features: [] },
         sweetSpots: { type: 'FeatureCollection', features: [] },
+        temperature: { type: 'FeatureCollection', features: [] },
         scales: {
           depth: { min: 0, max: 1, levels: [] },
           weed: { min: 0, max: 1, levels: [] },
           fishRate: { min: 0, max: 1, levels: [] },
+          temperature: { min: 0, max: 1, levels: [] },
         },
         bounds: null,
+        tempStats: null,
       },
     });
 
@@ -139,12 +142,15 @@ describe('scans CRUD', () => {
       bathymetryLines: { type: 'FeatureCollection' as const, features: [] },
       fishDensity: { type: 'FeatureCollection' as const, features: [] },
       sweetSpots: { type: 'FeatureCollection' as const, features: [] },
+      temperature: { type: 'FeatureCollection' as const, features: [] },
       scales: {
         depth: { min: 0.5, max: 2.5, levels: [] },
         weed: { min: 0, max: 0.3, levels: [] },
         fishRate: { min: 0, max: 0.5, levels: [] },
+        temperature: { min: 0, max: 1, levels: [] },
       },
       bounds: null,
+      tempStats: null,
     };
     await saveScanResults({ scanId: scan.id, bundleVersion: 1, builtAt: 1700000000000, bundle });
 

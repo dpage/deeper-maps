@@ -29,7 +29,7 @@ const SCAN: StoredScan = {
     category: { ...DEFAULT_CATEGORY_THRESHOLDS, goldFishRate: 0.4 },
     colorScale: DEFAULT_COLOR_SCALE_OPTIONS,
   },
-  layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true },
+  layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true, temperature: false },
 };
 
 beforeEach(async () => {
