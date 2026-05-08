@@ -11,7 +11,28 @@ import {
   DEFAULT_SONAR_OPTIONS,
 } from '../../analysis/constants';
 import type { StoredScan } from '../../storage/types';
+import type { LayerBundle } from '../../analysis/types';
 import { LayerControls } from '../LayerControls';
+
+function makeBundle(overrides: Partial<LayerBundle> = {}): LayerBundle {
+  return {
+    bathymetry: { type: 'FeatureCollection', features: [] },
+    weed: { type: 'FeatureCollection', features: [] },
+    bathymetryLines: { type: 'FeatureCollection', features: [] },
+    fishDensity: { type: 'FeatureCollection', features: [] },
+    sweetSpots: { type: 'FeatureCollection', features: [] },
+    temperature: { type: 'FeatureCollection', features: [] },
+    scales: {
+      depth: { min: 0, max: 1, levels: [] },
+      weed: { min: 0, max: 1, levels: [] },
+      fishRate: { min: 0, max: 1, levels: [] },
+      temperature: { min: 0, max: 1, levels: [] },
+    },
+    bounds: null,
+    tempStats: null,
+    ...overrides,
+  };
+}
 
 const SCAN: StoredScan = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -68,5 +89,20 @@ describe('<LayerControls/>', () => {
     await user.click(screen.getByLabelText('Bathymetry'));
     const updated = useDeeperMapsStore.getState().scans[SCAN.id]!;
     expect(updated.layerVisibility.bathymetry).toBe(false);
+  });
+
+  it('hides the temperature toggle when tempStats is null', () => {
+    useDeeperMapsStore.setState({ layerBundle: makeBundle({ tempStats: null }) });
+    render(<LayerControls scan={SCAN} />);
+    expect(screen.queryByLabelText(/Temperature/i)).toBeNull();
+  });
+
+  it('shows the temperature toggle when tempStats is populated', () => {
+    useDeeperMapsStore.setState({
+      layerBundle: makeBundle({ tempStats: { min: 12, mean: 14, max: 16 } }),
+    });
+    render(<LayerControls scan={SCAN} />);
+    const toggle = screen.getByLabelText(/Temperature/i);
+    expect(toggle).toBeInTheDocument();
   });
 });
