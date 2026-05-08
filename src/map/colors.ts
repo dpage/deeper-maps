@@ -48,6 +48,24 @@ export const ylOrRdRamp: readonly ColorStop[] = [
 ];
 
 /**
+ * Diverging cool→warm ramp for the temperature layer. Source:
+ * matplotlib's `RdYlBu` colour map, 9-step sample, reversed so
+ * cold reads blue and warm reads red — the cultural water-temperature
+ * convention (vs. the YlOrRd ramp which fish-density uses for "amount").
+ */
+export const rdYlBuRRamp: readonly ColorStop[] = [
+  [0.0, '#2c7bb6'],
+  [0.125, '#abd9e9'],
+  [0.25, '#e0f3f8'],
+  [0.375, '#ffffbf'],
+  [0.5, '#fee090'],
+  [0.625, '#fdae61'],
+  [0.75, '#f46d43'],
+  [0.875, '#d7191c'],
+  [1.0, '#a50026'],
+];
+
+/**
  * Build MapLibre `interpolate` stops mapping each quantile-level value to a
  * colour sampled from `ramp` at evenly-spaced positions. Used to colour
  * contour fills and lines so dense regions of the data get a wider colour
