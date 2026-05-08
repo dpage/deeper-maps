@@ -82,4 +82,31 @@ describe('<ActiveScanPanel/>', () => {
     expect(screen.getByText('My active scan')).toBeInTheDocument();
     expect(screen.getByLabelText('Bathymetry')).toBeInTheDocument();
   });
+
+  it('renders TemperatureStats with min/avg/max when tempStats is populated', () => {
+    useDeeperMapsStore.setState({
+      activeScanId: SCAN.id,
+      scans: { [SCAN.id]: SCAN },
+      layerBundle: {
+        bathymetry: { type: 'FeatureCollection', features: [] },
+        weed: { type: 'FeatureCollection', features: [] },
+        bathymetryLines: { type: 'FeatureCollection', features: [] },
+        fishDensity: { type: 'FeatureCollection', features: [] },
+        sweetSpots: { type: 'FeatureCollection', features: [] },
+        temperature: { type: 'FeatureCollection', features: [] },
+        scales: {
+          depth: { min: 0, max: 1, levels: [] },
+          weed: { min: 0, max: 1, levels: [] },
+          fishRate: { min: 0, max: 1, levels: [] },
+          temperature: { min: 11.1, max: 15.5, levels: [] },
+        },
+        bounds: null,
+        tempStats: { min: 11.1, mean: 13.3, max: 15.5 },
+      },
+      progress: null,
+      warnings: [],
+    });
+    render(<ActiveScanPanel />);
+    expect(screen.getByText(/11\.1 \/ 13\.3 \/ 15\.5 °C/)).toBeInTheDocument();
+  });
 });
