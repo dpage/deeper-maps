@@ -53,7 +53,7 @@ export const ylOrRdRamp: readonly ColorStop[] = [
  * cold reads blue and warm reads red — the cultural water-temperature
  * convention (vs. the YlOrRd ramp which fish-density uses for "amount").
  */
-export const rdYlBuRRamp: readonly ColorStop[] = [
+export const rdYlBuRamp: readonly ColorStop[] = [
   [0.0, '#2c7bb6'],
   [0.125, '#abd9e9'],
   [0.25, '#e0f3f8'],
