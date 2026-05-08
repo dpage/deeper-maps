@@ -96,6 +96,18 @@ export function parseQuestBathymetry(text: string, diagnostics: ParseDiagnostics
     );
   }
 
+  // Deeper Start CSV exports omit GPS — every row's lat/lon is 0. Without any
+  // anchor coordinates the scan cannot be plotted, so reject up front with a
+  // message that explains the cause rather than silently producing an empty
+  // map. (A Quest scan that lost GPS for the entire session lands here too.)
+  if (out.length > 0 && !out.some((r) => r.lat !== 0 || r.lon !== 0)) {
+    throw new Error(
+      `No GPS coordinates found in bathymetry.csv. Deeper Start exports do not ` +
+        `include GPS data, so the scan cannot be plotted on a map. Use the Deeper ` +
+        `app's map view, or upload a Quest/PRO scan instead.`,
+    );
+  }
+
   return out;
 }
 

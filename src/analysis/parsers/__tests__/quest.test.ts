@@ -99,6 +99,26 @@ malformed_row_here
     expect(rows).toHaveLength(4);
     expect(diagnostics.malformedRowCount).toBe(1);
   });
+
+  it('rejects a file whose every row has lat=0 and lon=0 (Deeper Start)', () => {
+    const csv = `0,0,1.5,18.4,1717000000000
+0,0,1.6,18.4,1717000000067
+0,0,1.7,18.4,1717000000134
+0,0,1.8,18.4,1717000000201
+`;
+    const diagnostics: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    expect(() => parseQuestBathymetry(csv, diagnostics)).toThrow(/no GPS coordinates/i);
+  });
+
+  it('does not reject a file where at least one row has a GPS fix', () => {
+    const csv = `0,0,1.5,18.4,1717000000000
+51.7,-1.43,1.6,18.4,1717000000067
+0,0,1.7,18.4,1717000000134
+`;
+    const diagnostics: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const rows = parseQuestBathymetry(csv, diagnostics);
+    expect(rows).toHaveLength(3);
+  });
 });
 
 describe('parseQuestSonar', () => {
