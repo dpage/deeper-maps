@@ -13,7 +13,7 @@ import type { FeatureCollection } from 'geojson';
  *   3 — adds `weedLines` field for line-style weed-over-bathymetry rendering.
  *   4 — replace weedLines with bathymetryLines for line-style bathymetry-over-weed rendering.
  *   5 — adds quantile-based `levels` to LayerScales for non-linear colour mapping.
- *   6 — adds `temperature` field + `tempStats` (commit <this PR>)
+ *   6 — adds `temperature` field + `tempStats` (commit 99c17f8).
  */
 export const CURRENT_BUNDLE_VERSION = 6;
 
