@@ -222,6 +222,49 @@ describe('buildLayers — bathymetry line contours', () => {
   });
 });
 
+describe('buildLayers — tempStats', () => {
+  it('returns null when no clean row has temp_c', () => {
+    const clean: CleanBath = {
+      rows: [
+        { ts_ms: 100, lat: 51.7, lon: -1.43, depth_m: 1, session_id: 0, file_id: 0 },
+        { ts_ms: 200, lat: 51.7, lon: -1.43, depth_m: 1.1, session_id: 0, file_id: 0 },
+      ],
+      sessions: [],
+      liftoutsRemoved: 0,
+    };
+    const lb = buildLayers(clean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.tempStats).toBeNull();
+  });
+
+  it('computes raw min/mean/max from clean.rows[*].temp_c', () => {
+    const clean: CleanBath = {
+      rows: [
+        { ts_ms: 100, lat: 51.7, lon: -1.43, depth_m: 1, temp_c: 12, session_id: 0, file_id: 0 },
+        { ts_ms: 200, lat: 51.7, lon: -1.43, depth_m: 1, temp_c: 14, session_id: 0, file_id: 0 },
+        { ts_ms: 300, lat: 51.7, lon: -1.43, depth_m: 1, temp_c: 16, session_id: 0, file_id: 0 },
+      ],
+      sessions: [],
+      liftoutsRemoved: 0,
+    };
+    const lb = buildLayers(clean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.tempStats).toEqual({ min: 12, mean: 14, max: 16 });
+  });
+
+  it('skips rows where temp_c is undefined', () => {
+    const clean: CleanBath = {
+      rows: [
+        { ts_ms: 100, lat: 51.7, lon: -1.43, depth_m: 1, temp_c: 10, session_id: 0, file_id: 0 },
+        { ts_ms: 200, lat: 51.7, lon: -1.43, depth_m: 1, session_id: 0, file_id: 0 },
+        { ts_ms: 300, lat: 51.7, lon: -1.43, depth_m: 1, temp_c: 20, session_id: 0, file_id: 0 },
+      ],
+      sessions: [],
+      liftoutsRemoved: 0,
+    };
+    const lb = buildLayers(clean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.tempStats).toEqual({ min: 10, mean: 15, max: 20 });
+  });
+});
+
 describe('buildLayers — colour-scale levels stay within the trimmed range', () => {
   it('depth levels do not exceed scales.depth.max even when an outlier is present', () => {
     // 5 depths, the last one a clear outlier. With outlierTrimPct=1.0 (the

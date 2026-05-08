@@ -239,6 +239,21 @@ interface SweetSpotProps {
   mean_weed: number;
 }
 
+function computeTempStats(clean: CleanBath): LayerBundle['tempStats'] {
+  let min = Infinity;
+  let max = -Infinity;
+  let sum = 0;
+  let n = 0;
+  for (const r of clean.rows) {
+    if (r.temp_c === undefined) continue;
+    if (r.temp_c < min) min = r.temp_c;
+    if (r.temp_c > max) max = r.temp_c;
+    sum += r.temp_c;
+    n++;
+  }
+  return n === 0 ? null : { min, mean: sum / n, max };
+}
+
 function computeBounds(clean: CleanBath): LayerBundle['bounds'] {
   if (clean.rows.length === 0) return null;
   let minLon = Infinity;
@@ -302,6 +317,6 @@ export function buildLayers(
     temperature: emptyFc(),
     scales,
     bounds: computeBounds(clean),
-    tempStats: null,
+    tempStats: computeTempStats(clean),
   };
 }
