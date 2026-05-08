@@ -29,6 +29,13 @@ export const __fitBoundsCalls: {
 }[] = [];
 
 /**
+ * Tracks every `addLayer` call across all MockMap instances so tests can
+ * assert layer registration order (e.g. z-order checks). Reset via
+ * `__resetAddLayerCalls()`.
+ */
+export const __addLayerCalls: { id: string }[] = [];
+
+/**
  * Tracks every `setStyle` call so the base-layer-swap test can assert that
  * we swap the style instead of tearing down the map. Reset via
  * `__resetSetStyleCalls()`.
@@ -51,6 +58,9 @@ export function __resetAddImageCalls(): void {
 export function __resetFitBoundsCalls(): void {
   __fitBoundsCalls.length = 0;
 }
+export function __resetAddLayerCalls(): void {
+  __addLayerCalls.length = 0;
+}
 export function __resetSetStyleCalls(): void {
   __setStyleCalls.length = 0;
 }
@@ -61,6 +71,7 @@ export function __resetAll(): void {
   __resetSetDataCalls();
   __resetAddImageCalls();
   __resetFitBoundsCalls();
+  __resetAddLayerCalls();
   __resetSetStyleCalls();
   __resetSetLayoutPropertyCalls();
   __isStyleLoadedReturn = true;
@@ -125,7 +136,9 @@ class MockMap {
   });
   addSource = vi.fn();
   removeSource = vi.fn();
-  addLayer = vi.fn();
+  addLayer = vi.fn((layer: { id: string }) => {
+    __addLayerCalls.push({ id: layer.id });
+  });
   removeLayer = vi.fn();
   getLayer = vi.fn(() => null);
   getSource = vi.fn((sourceId: string) => ({

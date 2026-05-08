@@ -169,14 +169,17 @@ export function MapView(): JSX.Element {
 
     const fallback = { min: 0, max: 1, levels: [] };
     // Layer order matters — `addLayer` appends, and later layers render on
-    // top of earlier ones. Bath-lines sit OVER weed-fill and temperature-fill
-    // so depth contour lines are visible against the coloured overlay, but
-    // UNDER fish-density and sweet-spots so markers stay on top.
+    // top of earlier ones. All filled overlays (bath-fill, weed-fill,
+    // temperature-fill) are registered first so they sit at the bottom.
+    // Bath-lines are registered above all filled overlays so depth contour
+    // lines remain visible regardless of which fill layers are active.
+    // Fish-density and sweet-spots markers are last so they always render
+    // on top of everything.
     for (const builder of [
       buildBathymetryStyle(fallback),
       buildWeedStyle(fallback),
-      buildBathymetryLinesStyle(fallback),
       buildTemperatureStyle(fallback),
+      buildBathymetryLinesStyle(fallback),
       buildFishDensityStyle(fallback),
       buildSweetSpotsStyle(),
     ]) {

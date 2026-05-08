@@ -64,7 +64,7 @@ export function Legend(): JSX.Element | null {
             </Typography>
           </Stack>
         )}
-        {scan.layerVisibility.temperature && (
+        {scan.layerVisibility.temperature && layerBundle.tempStats != null && (
           <Stack direction="row" spacing={1} alignItems="center">
             <RampSwatch ramp={rdYlBuRamp} />
             <Typography variant="caption">

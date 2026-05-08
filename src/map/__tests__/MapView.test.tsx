@@ -8,6 +8,7 @@ import { useDeeperMapsStore } from '../../state/store';
 import { closeDeeperMapsDb } from '../../storage/db';
 import type { StoredScan } from '../../storage/types';
 import { MapView } from '../MapView';
+import { BATHYMETRY_LINES_LAYER_ID } from '../layers/bathymetryLines';
 import { TEMPERATURE_LAYER_ID } from '../layers/temperature';
 
 beforeEach(async () => {
@@ -118,7 +119,7 @@ describe('<MapView/>', () => {
 
     render(<MapView />);
     await new Promise((r) => setTimeout(r, 5));
-    expect(mock.__setDataCalls.length).toBeGreaterThanOrEqual(5);
+    expect(mock.__setDataCalls.length).toBeGreaterThanOrEqual(6);
     const sourceIds = mock.__setDataCalls.map((c) => c.sourceId);
     expect(sourceIds).toContain('bathymetry');
     expect(sourceIds).toContain('weed');
@@ -259,7 +260,7 @@ describe('<MapView/>', () => {
     });
     await new Promise((r) => setTimeout(r, 5));
 
-    expect(mock.__setDataCalls.length).toBeGreaterThanOrEqual(5);
+    expect(mock.__setDataCalls.length).toBeGreaterThanOrEqual(6);
     expect(mock.__fitBoundsCalls.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -449,6 +450,21 @@ describe('<MapView/>', () => {
       name: 'visibility',
       value: 'none',
     });
+  });
+
+  it('registers temperature-fill below bathymetry-lines so contour lines stay visible', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    const layerIds = mock.__addLayerCalls.map((c) => c.id);
+    const tempIdx = layerIds.indexOf(TEMPERATURE_LAYER_ID);
+    const linesIdx = layerIds.indexOf(BATHYMETRY_LINES_LAYER_ID);
+    expect(tempIdx).toBeGreaterThan(-1);
+    expect(linesIdx).toBeGreaterThan(-1);
+    expect(tempIdx).toBeLessThan(linesIdx);
   });
 
   it('toggles temperature-fill visibility 1:1 with the temperature flag', async () => {
