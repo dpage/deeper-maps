@@ -8,6 +8,7 @@ import { useDeeperMapsStore } from '../../state/store';
 import { closeDeeperMapsDb } from '../../storage/db';
 import type { StoredScan } from '../../storage/types';
 import { MapView } from '../MapView';
+import { TEMPERATURE_LAYER_ID } from '../layers/temperature';
 
 beforeEach(async () => {
   await closeDeeperMapsDb();
@@ -389,6 +390,105 @@ describe('<MapView/>', () => {
     });
     expect(mock.__setLayoutPropertyCalls).toContainEqual({
       layerId: 'weed-fill',
+      name: 'visibility',
+      value: 'none',
+    });
+  });
+
+  it('renders bath as lines when temperature is on (extended rule)', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const scan = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
+      layerVisibility: { bathymetry: true, weed: false, fishDensity: false, sweetSpots: false, temperature: true },
+    });
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      layerBundle: bundleWith(null),
+    });
+
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'bathymetry-fill',
+      name: 'visibility',
+      value: 'none',
+    });
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'bathymetry-lines-layer',
+      name: 'visibility',
+      value: 'visible',
+    });
+  });
+
+  it('renders bath as fill when neither weed nor temperature is on', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const scan = makeScan('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', {
+      layerVisibility: { bathymetry: true, weed: false, fishDensity: false, sweetSpots: false, temperature: false },
+    });
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      layerBundle: bundleWith(null),
+    });
+
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'bathymetry-fill',
+      name: 'visibility',
+      value: 'visible',
+    });
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: 'bathymetry-lines-layer',
+      name: 'visibility',
+      value: 'none',
+    });
+  });
+
+  it('toggles temperature-fill visibility 1:1 with the temperature flag', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const scan = makeScan('cccccccc-cccc-cccc-cccc-cccccccccccc', {
+      layerVisibility: { bathymetry: false, weed: false, fishDensity: false, sweetSpots: false, temperature: true },
+    });
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      layerBundle: bundleWith(null),
+    });
+
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: TEMPERATURE_LAYER_ID,
+      name: 'visibility',
+      value: 'visible',
+    });
+
+    // Now turn temperature off
+    mock.__resetSetLayoutPropertyCalls();
+    act(() => {
+      useDeeperMapsStore.setState({
+        scans: {
+          'cccccccc-cccc-cccc-cccc-cccccccccccc': makeScan('cccccccc-cccc-cccc-cccc-cccccccccccc', {
+            layerVisibility: { bathymetry: false, weed: false, fishDensity: false, sweetSpots: false, temperature: false },
+          }),
+        },
+        activeScanId: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      });
+    });
+    await new Promise((r) => setTimeout(r, 5));
+
+    expect(mock.__setLayoutPropertyCalls).toContainEqual({
+      layerId: TEMPERATURE_LAYER_ID,
       name: 'visibility',
       value: 'none',
     });

@@ -25,6 +25,11 @@ import {
   SWEET_SPOTS_SOURCE_ID,
   buildSweetSpotsStyle,
 } from './layers/sweetSpots';
+import {
+  TEMPERATURE_LAYER_ID,
+  TEMPERATURE_SOURCE_ID,
+  buildTemperatureStyle,
+} from './layers/temperature';
 import { WEED_LAYER_ID, WEED_SOURCE_ID, buildWeedStyle } from './layers/weed';
 
 // `maxzoom` on the raster source caps the highest zoom level at which MapLibre
@@ -68,38 +73,40 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
 // Layers whose visibility maps 1:1 to a single LayerVisibility flag.
 // `bathymetry` is handled specially (see `applyVisibility`) because it
 // toggles between the filled and line-style bathymetry layers depending on
-// whether weed is also visible.
+// whether weed or temperature is also visible.
 const LAYER_VISIBILITY_KEYS: Array<{ key: keyof LayerVisibility; layerId: string }> = [
   { key: 'weed', layerId: WEED_LAYER_ID },
   { key: 'fishDensity', layerId: FISH_DENSITY_LAYER_ID },
   { key: 'sweetSpots', layerId: SWEET_SPOTS_LAYER_ID },
+  { key: 'temperature', layerId: TEMPERATURE_LAYER_ID },
 ];
 
 /**
  * Apply the given scan's layerVisibility flags to all overlay layers.
  *
- * Simple layers (weed, fish density, sweet spots) map 1:1 from a boolean
- * visibility flag to `setLayoutProperty(layerId, 'visibility', ...)`.
+ * Simple layers (weed, fish density, sweet spots, temperature) map 1:1 from a
+ * boolean visibility flag to `setLayoutProperty(layerId, 'visibility', ...)`.
  *
- * Bathymetry is special: when both bathymetry and weed are visible, we
- * render bathymetry as line contours (the cultural "elevation contour"
- * cue) over the filled weed. Otherwise — bath alone — we render the
- * filled contours; bath off hides both.
+ * Bathymetry is special: when bathymetry and ANY filled overlay (weed OR
+ * temperature) are both visible, we render bathymetry as line contours (the
+ * cultural "elevation contour" cue) over the filled overlay colour. Otherwise —
+ * bath alone — we render the filled contours; bath off hides both.
  */
 function applyVisibility(map: MapLibreMap, scan: { layerVisibility: LayerVisibility }): void {
   for (const { key, layerId } of LAYER_VISIBILITY_KEYS) {
     map.setLayoutProperty(layerId, 'visibility', scan.layerVisibility[key] ? 'visible' : 'none');
   }
-  const weedOn = scan.layerVisibility.weed;
+  const filledOverlayOn = scan.layerVisibility.weed || scan.layerVisibility.temperature;
   const bathOn = scan.layerVisibility.bathymetry;
-  // Bath-fill: visible only when bath is on AND weed is off (so we don't have
-  // two filled layers competing).
-  map.setLayoutProperty(BATHYMETRY_LAYER_ID, 'visibility', bathOn && !weedOn ? 'visible' : 'none');
-  // Bath-lines: visible only when both are on (depth contours over weed fill).
+  // Bath-fill: visible only when bath is on AND no filled overlay is on (so we
+  // don't have two filled layers competing).
+  map.setLayoutProperty(BATHYMETRY_LAYER_ID, 'visibility', bathOn && !filledOverlayOn ? 'visible' : 'none');
+  // Bath-lines: visible when bath is on AND a filled overlay is on (depth
+  // contours over weed or temperature fill).
   map.setLayoutProperty(
     BATHYMETRY_LINES_LAYER_ID,
     'visibility',
-    bathOn && weedOn ? 'visible' : 'none',
+    bathOn && filledOverlayOn ? 'visible' : 'none',
   );
 }
 
@@ -162,13 +169,14 @@ export function MapView(): JSX.Element {
 
     const fallback = { min: 0, max: 1, levels: [] };
     // Layer order matters — `addLayer` appends, and later layers render on
-    // top of earlier ones. Bath-lines sit OVER weed-fill so the depth
-    // contour lines are visible against the green weed colour, but UNDER
-    // fish-density and sweet-spots so markers stay on top.
+    // top of earlier ones. Bath-lines sit OVER weed-fill and temperature-fill
+    // so depth contour lines are visible against the coloured overlay, but
+    // UNDER fish-density and sweet-spots so markers stay on top.
     for (const builder of [
       buildBathymetryStyle(fallback),
       buildWeedStyle(fallback),
       buildBathymetryLinesStyle(fallback),
+      buildTemperatureStyle(fallback),
       buildFishDensityStyle(fallback),
       buildSweetSpotsStyle(),
     ]) {
@@ -186,6 +194,9 @@ export function MapView(): JSX.Element {
       (map.getSource(WEED_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(initialBundle.weed);
       (map.getSource(BATHYMETRY_LINES_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         initialBundle.bathymetryLines,
+      );
+      (map.getSource(TEMPERATURE_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
+        initialBundle.temperature,
       );
       (map.getSource(FISH_DENSITY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         initialBundle.fishDensity,
@@ -277,6 +288,9 @@ export function MapView(): JSX.Element {
       (map.getSource(WEED_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(layerBundle.weed);
       (map.getSource(BATHYMETRY_LINES_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         layerBundle.bathymetryLines,
+      );
+      (map.getSource(TEMPERATURE_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
+        layerBundle.temperature,
       );
       (map.getSource(FISH_DENSITY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         layerBundle.fishDensity,
