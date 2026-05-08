@@ -1,13 +1,13 @@
 import type maplibregl from 'maplibre-gl';
 import type { ScaleRange } from '../../analysis/types';
-import { quantileColorStops, rdYlBuRamp } from '../colors';
+import { quantileColorStops, plasmaRamp } from '../colors';
 import type { LayerStyle } from './bathymetry';
 
 export const TEMPERATURE_SOURCE_ID = 'temperature';
 export const TEMPERATURE_LAYER_ID = 'temperature-fill';
 
 export function buildTemperatureStyle(scale: ScaleRange): LayerStyle {
-  const colorStops = quantileColorStops(scale.levels, rdYlBuRamp);
+  const colorStops = quantileColorStops(scale.levels, plasmaRamp);
 
   return {
     source: {

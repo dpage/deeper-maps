@@ -1,5 +1,5 @@
 import { Box, Paper, Stack, Typography } from '@mui/material';
-import { greensRamp, rdYlBuRamp, viridisRamp, ylOrRdRamp } from '../map/colors';
+import { greensRamp, plasmaRamp, viridisRamp, ylOrRdRamp } from '../map/colors';
 import { useDeeperMapsStore } from '../state/store';
 
 const SWEET_SPOTS = [
@@ -66,7 +66,7 @@ export function Legend(): JSX.Element | null {
         )}
         {scan.layerVisibility.temperature && layerBundle.tempStats != null && (
           <Stack direction="row" spacing={1} alignItems="center">
-            <RampSwatch ramp={rdYlBuRamp} />
+            <RampSwatch ramp={plasmaRamp} />
             <Typography variant="caption">
               Temp: {layerBundle.scales.temperature.min.toFixed(1)}–
               {layerBundle.scales.temperature.max.toFixed(1)} °C

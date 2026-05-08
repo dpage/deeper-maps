@@ -48,21 +48,23 @@ export const ylOrRdRamp: readonly ColorStop[] = [
 ];
 
 /**
- * Diverging cool→warm ramp for the temperature layer. Source:
- * matplotlib's `RdYlBu` colour map, 9-step sample, reversed so
- * cold reads blue and warm reads red — the cultural water-temperature
- * convention (vs. the YlOrRd ramp which fish-density uses for "amount").
+ * Sequential ramp for the temperature layer. Source: matplotlib's `plasma`
+ * colour map, 9-step sample. Perceptually uniform; reads as "more intensity
+ * = brighter" via dark purple → magenta → orange → yellow. Chosen over a
+ * diverging cool-to-warm ramp because a single scan covers a narrow range
+ * (typically 4 °C) where the diverging midpoint coincides with the data
+ * mean and washes out colour variation across the cluster.
  */
-export const rdYlBuRamp: readonly ColorStop[] = [
-  [0.0, '#2c7bb6'],
-  [0.125, '#abd9e9'],
-  [0.25, '#e0f3f8'],
-  [0.375, '#ffffbf'],
-  [0.5, '#fee090'],
-  [0.625, '#fdae61'],
-  [0.75, '#f46d43'],
-  [0.875, '#d7191c'],
-  [1.0, '#a50026'],
+export const plasmaRamp: readonly ColorStop[] = [
+  [0.0, '#0d0887'],
+  [0.125, '#46039f'],
+  [0.25, '#7201a8'],
+  [0.375, '#9c179e'],
+  [0.5, '#bd3786'],
+  [0.625, '#d8576b'],
+  [0.75, '#ed7953'],
+  [0.875, '#fb9f3a'],
+  [1.0, '#fdca26'],
 ];
 
 /**
