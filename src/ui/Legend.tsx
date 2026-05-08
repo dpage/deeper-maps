@@ -1,5 +1,5 @@
 import { Box, Paper, Stack, Typography } from '@mui/material';
-import { greensRamp, viridisRamp, ylOrRdRamp } from '../map/colors';
+import { greensRamp, rdYlBuRamp, viridisRamp, ylOrRdRamp } from '../map/colors';
 import { useDeeperMapsStore } from '../state/store';
 
 const SWEET_SPOTS = [
@@ -61,6 +61,15 @@ export function Legend(): JSX.Element | null {
             <Typography variant="caption">
               Fish rate: {(layerBundle.scales.fishRate.min * 100).toFixed(0)}–
               {(layerBundle.scales.fishRate.max * 100).toFixed(0)}%
+            </Typography>
+          </Stack>
+        )}
+        {scan.layerVisibility.temperature && (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <RampSwatch ramp={rdYlBuRamp} />
+            <Typography variant="caption">
+              Temp: {layerBundle.scales.temperature.min.toFixed(1)}–
+              {layerBundle.scales.temperature.max.toFixed(1)} °C
             </Typography>
           </Stack>
         )}

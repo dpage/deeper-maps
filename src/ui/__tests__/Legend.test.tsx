@@ -178,4 +178,54 @@ describe('<Legend/>', () => {
     render(<Legend />);
     expect(screen.getByText(/^weed:/i)).toBeInTheDocument();
   });
+
+  it('renders the temperature row when scan.layerVisibility.temperature is true', () => {
+    useDeeperMapsStore.setState({
+      layerBundle: {
+        bathymetry: { type: 'FeatureCollection', features: [] },
+        weed: { type: 'FeatureCollection', features: [] },
+        bathymetryLines: { type: 'FeatureCollection', features: [] },
+        fishDensity: { type: 'FeatureCollection', features: [] },
+        sweetSpots: { type: 'FeatureCollection', features: [] },
+        temperature: { type: 'FeatureCollection', features: [] },
+        scales: {
+          depth: { min: 0, max: 1, levels: [] },
+          weed: { min: 0, max: 1, levels: [] },
+          fishRate: { min: 0, max: 1, levels: [] },
+          temperature: { min: 12.4, max: 16.7, levels: [12.4, 14, 16.7] },
+        },
+        bounds: null,
+        tempStats: { min: 12.4, mean: 14.2, max: 16.7 },
+      },
+      activeScanId: SCAN.id,
+      scans: { [SCAN.id]: { ...SCAN, layerVisibility: { ...SCAN.layerVisibility, temperature: true } } },
+    });
+    render(<Legend />);
+    expect(screen.getByText(/Temp:.*12\.4.*16\.7.*°C/)).toBeInTheDocument();
+  });
+
+  it('hides the temperature row when scan.layerVisibility.temperature is false', () => {
+    useDeeperMapsStore.setState({
+      layerBundle: {
+        bathymetry: { type: 'FeatureCollection', features: [] },
+        weed: { type: 'FeatureCollection', features: [] },
+        bathymetryLines: { type: 'FeatureCollection', features: [] },
+        fishDensity: { type: 'FeatureCollection', features: [] },
+        sweetSpots: { type: 'FeatureCollection', features: [] },
+        temperature: { type: 'FeatureCollection', features: [] },
+        scales: {
+          depth: { min: 0, max: 1, levels: [] },
+          weed: { min: 0, max: 1, levels: [] },
+          fishRate: { min: 0, max: 1, levels: [] },
+          temperature: { min: 12.4, max: 16.7, levels: [12.4, 14, 16.7] },
+        },
+        bounds: null,
+        tempStats: { min: 12.4, mean: 14.2, max: 16.7 },
+      },
+      activeScanId: SCAN.id,
+      scans: { [SCAN.id]: { ...SCAN, layerVisibility: { ...SCAN.layerVisibility, temperature: false } } },
+    });
+    render(<Legend />);
+    expect(screen.queryByText(/Temp:/)).toBeNull();
+  });
 });
