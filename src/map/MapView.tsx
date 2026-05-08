@@ -110,7 +110,11 @@ function applyVisibility(map: MapLibreMap, scan: { layerVisibility: LayerVisibil
   const bathOn = scan.layerVisibility.bathymetry;
   // Bath-fill: visible only when bath is on AND no filled overlay is on (so we
   // don't have two filled layers competing).
-  map.setLayoutProperty(BATHYMETRY_LAYER_ID, 'visibility', bathOn && !filledOverlayOn ? 'visible' : 'none');
+  map.setLayoutProperty(
+    BATHYMETRY_LAYER_ID,
+    'visibility',
+    bathOn && !filledOverlayOn ? 'visible' : 'none',
+  );
   // Bath-lines: visible when bath is on AND a filled overlay is on (depth
   // contours over weed or temperature fill).
   map.setLayoutProperty(
@@ -135,11 +139,27 @@ type SetDataSrc = { setData: (d: GeoJSON.FeatureCollection) => void };
  * clamped to the ramp endpoint.
  */
 function applyColorExpressions(map: MapLibreMap, bundle: LayerBundle): void {
-  map.setPaintProperty(BATHYMETRY_LAYER_ID, 'fill-color', buildBathymetryColorExpression(bundle.scales.depth));
+  map.setPaintProperty(
+    BATHYMETRY_LAYER_ID,
+    'fill-color',
+    buildBathymetryColorExpression(bundle.scales.depth),
+  );
   map.setPaintProperty(WEED_LAYER_ID, 'fill-color', buildWeedColorExpression(bundle.scales.weed));
-  map.setPaintProperty(BATHYMETRY_LINES_LAYER_ID, 'line-color', buildBathymetryLinesColorExpression(bundle.scales.depth));
-  map.setPaintProperty(TEMPERATURE_LAYER_ID, 'fill-color', buildTemperatureColorExpression(bundle.scales.temperature));
-  map.setPaintProperty(FISH_DENSITY_LAYER_ID, 'icon-color', buildFishDensityColorExpression(bundle.scales.fishRate));
+  map.setPaintProperty(
+    BATHYMETRY_LINES_LAYER_ID,
+    'line-color',
+    buildBathymetryLinesColorExpression(bundle.scales.depth),
+  );
+  map.setPaintProperty(
+    TEMPERATURE_LAYER_ID,
+    'fill-color',
+    buildTemperatureColorExpression(bundle.scales.temperature),
+  );
+  map.setPaintProperty(
+    FISH_DENSITY_LAYER_ID,
+    'icon-color',
+    buildFishDensityColorExpression(bundle.scales.fishRate),
+  );
 }
 
 export function MapView(): JSX.Element {

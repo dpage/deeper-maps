@@ -37,7 +37,13 @@ function makeScan(id: string, name: string, contentHash: string): StoredScan {
     updatedAt: 1700000000000,
     fileMeta: [],
     thresholds: DEFAULT_THRESHOLDS,
-    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true, temperature: false },
+    layerVisibility: {
+      bathymetry: true,
+      weed: true,
+      fishDensity: true,
+      sweetSpots: true,
+      temperature: false,
+    },
   };
 }
 
@@ -124,7 +130,10 @@ describe('useDeeperMapsStore', () => {
       fileMeta: [],
       thresholds: DEFAULT_THRESHOLDS,
       layerVisibility: {
-        bathymetry: true, weed: true, fishDensity: true, sweetSpots: true,
+        bathymetry: true,
+        weed: true,
+        fishDensity: true,
+        sweetSpots: true,
       },
     } as unknown as StoredScan;
     await saveScan(legacyScan, []);

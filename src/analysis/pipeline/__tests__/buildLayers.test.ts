@@ -272,9 +272,15 @@ describe('buildLayers — temperature contours', () => {
       origin: { lat: 51.7, lon: -1.43 },
       rows: [
         {
-          cx: 0, cy: 0, lat: 51.7, lon: -1.43,
-          n_pings: 5, mean_depth: 2, mean_weed: 0,
-          fish_rate: 0, bottom_hardness: 0,
+          cx: 0,
+          cy: 0,
+          lat: 51.7,
+          lon: -1.43,
+          n_pings: 5,
+          mean_depth: 2,
+          mean_weed: 0,
+          fish_rate: 0,
+          bottom_hardness: 0,
           category: 'none',
         },
       ],
@@ -300,7 +306,7 @@ describe('buildLayers — temperature contours', () => {
           mean_weed: 0,
           fish_rate: 0,
           bottom_hardness: 0,
-          mean_temp_c: 12 + (iy / 4) * 6,   // 12, 13.5, 15, 16.5, 18
+          mean_temp_c: 12 + (iy / 4) * 6, // 12, 13.5, 15, 16.5, 18
           category: 'none' as const,
         });
       }

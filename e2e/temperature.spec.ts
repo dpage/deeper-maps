@@ -35,7 +35,5 @@ test('temperature: toggle present, panel shows min/avg/max °C', async ({ page }
 
   // The temperature stat line must show min=12.4 and max=16.7.
   // Middle value (avg) is computed at runtime; allow any two-decimal value.
-  await expect(
-    page.getByText(/12\.4 \/ \d+\.\d+ \/ 16\.7 °C/)
-  ).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText(/12\.4 \/ \d+\.\d+ \/ 16\.7 °C/)).toBeVisible({ timeout: 30000 });
 });

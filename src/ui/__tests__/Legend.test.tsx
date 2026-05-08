@@ -27,7 +27,13 @@ const SCAN: StoredScan = {
     category: DEFAULT_CATEGORY_THRESHOLDS,
     colorScale: DEFAULT_COLOR_SCALE_OPTIONS,
   },
-  layerVisibility: { bathymetry: true, weed: false, fishDensity: true, sweetSpots: true, temperature: false },
+  layerVisibility: {
+    bathymetry: true,
+    weed: false,
+    fishDensity: true,
+    sweetSpots: true,
+    temperature: false,
+  },
 };
 
 beforeEach(async () => {
@@ -198,7 +204,9 @@ describe('<Legend/>', () => {
         tempStats: { min: 12.4, mean: 14.2, max: 16.7 },
       },
       activeScanId: SCAN.id,
-      scans: { [SCAN.id]: { ...SCAN, layerVisibility: { ...SCAN.layerVisibility, temperature: true } } },
+      scans: {
+        [SCAN.id]: { ...SCAN, layerVisibility: { ...SCAN.layerVisibility, temperature: true } },
+      },
     });
     render(<Legend />);
     expect(screen.getByText(/Temp:.*12\.4.*16\.7.*°C/)).toBeInTheDocument();
@@ -223,7 +231,9 @@ describe('<Legend/>', () => {
         tempStats: { min: 12.4, mean: 14.2, max: 16.7 },
       },
       activeScanId: SCAN.id,
-      scans: { [SCAN.id]: { ...SCAN, layerVisibility: { ...SCAN.layerVisibility, temperature: false } } },
+      scans: {
+        [SCAN.id]: { ...SCAN, layerVisibility: { ...SCAN.layerVisibility, temperature: false } },
+      },
     });
     render(<Legend />);
     expect(screen.queryByText(/Temp:/)).toBeNull();

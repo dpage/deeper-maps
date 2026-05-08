@@ -27,7 +27,13 @@ const SCAN: StoredScan = {
     category: DEFAULT_CATEGORY_THRESHOLDS,
     colorScale: DEFAULT_COLOR_SCALE_OPTIONS,
   },
-  layerVisibility: { bathymetry: true, weed: false, fishDensity: true, sweetSpots: true, temperature: false },
+  layerVisibility: {
+    bathymetry: true,
+    weed: false,
+    fishDensity: true,
+    sweetSpots: true,
+    temperature: false,
+  },
 };
 
 beforeEach(async () => {

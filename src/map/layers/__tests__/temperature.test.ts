@@ -39,7 +39,11 @@ describe('buildTemperatureStyle', () => {
 
 describe('buildTemperatureColorExpression', () => {
   it('builds an interpolate expression that reflects the actual scale levels (regression: values 20-25 must not all clamp to one colour)', () => {
-    const expr = buildTemperatureColorExpression({ min: 20.6, max: 24.4, levels: [20.6, 22.0, 24.4] });
+    const expr = buildTemperatureColorExpression({
+      min: 20.6,
+      max: 24.4,
+      levels: [20.6, 22.0, 24.4],
+    });
     // Expression must be an array starting with 'interpolate'.
     expect(Array.isArray(expr)).toBe(true);
     expect((expr as unknown[])[0]).toBe('interpolate');

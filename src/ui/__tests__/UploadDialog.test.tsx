@@ -33,7 +33,13 @@ function makeStoredScan(id: string, name: string, contentHash: string): StoredSc
     updatedAt: 0,
     fileMeta: [],
     thresholds: DEFAULTS,
-    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true, temperature: false },
+    layerVisibility: {
+      bathymetry: true,
+      weed: true,
+      fishDensity: true,
+      sweetSpots: true,
+      temperature: false,
+    },
   };
 }
 

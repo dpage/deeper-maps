@@ -60,7 +60,17 @@ describe('toExclusiveBands', () => {
           type: 'Feature' as const,
           geometry: {
             type: 'MultiPolygon' as const,
-            coordinates: [[[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]],
+            coordinates: [
+              [
+                [
+                  [0, 0],
+                  [10, 0],
+                  [10, 10],
+                  [0, 10],
+                  [0, 0],
+                ],
+              ],
+            ],
           },
           properties: { level: 1 },
         },
@@ -79,7 +89,17 @@ describe('toExclusiveBands', () => {
           type: 'Feature' as const,
           geometry: {
             type: 'MultiPolygon' as const,
-            coordinates: [[[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]],
+            coordinates: [
+              [
+                [
+                  [0, 0],
+                  [10, 0],
+                  [10, 10],
+                  [0, 10],
+                  [0, 0],
+                ],
+              ],
+            ],
           },
           properties: { level: 1 },
         },
@@ -87,7 +107,17 @@ describe('toExclusiveBands', () => {
           type: 'Feature' as const,
           geometry: {
             type: 'MultiPolygon' as const,
-            coordinates: [[[[3, 3], [7, 3], [7, 7], [3, 7], [3, 3]]]],
+            coordinates: [
+              [
+                [
+                  [3, 3],
+                  [7, 3],
+                  [7, 7],
+                  [3, 7],
+                  [3, 3],
+                ],
+              ],
+            ],
           },
           properties: { level: 2 },
         },
@@ -107,8 +137,17 @@ describe('toExclusiveBands', () => {
   });
 
   it('handles three nested levels — each except innermost gets a hole', () => {
-    const box = (a: number, b: number) =>
-      [[[[ a, a], [b, a], [b, b], [a, b], [a, a]]]];
+    const box = (a: number, b: number) => [
+      [
+        [
+          [a, a],
+          [b, a],
+          [b, b],
+          [a, b],
+          [a, a],
+        ],
+      ],
+    ];
 
     const fc = {
       type: 'FeatureCollection' as const,

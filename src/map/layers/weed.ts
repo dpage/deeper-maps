@@ -6,9 +6,7 @@ import type maplibregl from 'maplibre-gl';
 export const WEED_SOURCE_ID = 'weed';
 export const WEED_LAYER_ID = 'weed-fill';
 
-export function buildWeedColorExpression(
-  scale: ScaleRange,
-): maplibregl.ExpressionSpecification {
+export function buildWeedColorExpression(scale: ScaleRange): maplibregl.ExpressionSpecification {
   const colorStops = quantileColorStops(scale.levels, greensRamp);
   return [
     'interpolate',

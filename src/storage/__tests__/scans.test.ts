@@ -38,7 +38,13 @@ function makeScan(overrides: Partial<StoredScan> = {}): StoredScan {
     updatedAt: 1700000000000,
     fileMeta: [{ name: 'bathymetry.csv', byteSize: 1024, sha256: 'hh' }],
     thresholds: DEFAULT_THRESHOLDS,
-    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true, temperature: false },
+    layerVisibility: {
+      bathymetry: true,
+      weed: true,
+      fishDensity: true,
+      sweetSpots: true,
+      temperature: false,
+    },
     ...overrides,
   };
 }

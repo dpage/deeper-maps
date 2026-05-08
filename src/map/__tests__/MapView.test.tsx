@@ -88,7 +88,13 @@ function makeScan(id: string, overrides: Partial<StoredScan> = {}): StoredScan {
       },
       colorScale: { outlierTrimPct: 0.05 },
     },
-    layerVisibility: { bathymetry: true, weed: true, fishDensity: true, sweetSpots: true, temperature: false },
+    layerVisibility: {
+      bathymetry: true,
+      weed: true,
+      fishDensity: true,
+      sweetSpots: true,
+      temperature: false,
+    },
     ...overrides,
   };
 }
@@ -270,7 +276,13 @@ describe('<MapView/>', () => {
     mock.__resetAll();
 
     const scan = makeScan('66666666-6666-6666-6666-666666666666', {
-      layerVisibility: { bathymetry: true, weed: true, fishDensity: false, sweetSpots: false, temperature: false },
+      layerVisibility: {
+        bathymetry: true,
+        weed: true,
+        fishDensity: false,
+        sweetSpots: false,
+        temperature: false,
+      },
     });
     useDeeperMapsStore.setState({
       scans: { [scan.id]: scan },
@@ -303,7 +315,13 @@ describe('<MapView/>', () => {
     mock.__resetAll();
 
     const scan = makeScan('77777777-7777-7777-7777-777777777777', {
-      layerVisibility: { bathymetry: false, weed: true, fishDensity: false, sweetSpots: false, temperature: false },
+      layerVisibility: {
+        bathymetry: false,
+        weed: true,
+        fishDensity: false,
+        sweetSpots: false,
+        temperature: false,
+      },
     });
     useDeeperMapsStore.setState({
       scans: { [scan.id]: scan },
@@ -336,7 +354,13 @@ describe('<MapView/>', () => {
     mock.__resetAll();
 
     const scan = makeScan('99999999-9999-9999-9999-999999999999', {
-      layerVisibility: { bathymetry: true, weed: false, fishDensity: false, sweetSpots: false, temperature: false },
+      layerVisibility: {
+        bathymetry: true,
+        weed: false,
+        fishDensity: false,
+        sweetSpots: false,
+        temperature: false,
+      },
     });
     useDeeperMapsStore.setState({
       scans: { [scan.id]: scan },
@@ -369,7 +393,13 @@ describe('<MapView/>', () => {
     mock.__resetAll();
 
     const scan = makeScan('88888888-8888-8888-8888-888888888888', {
-      layerVisibility: { bathymetry: false, weed: false, fishDensity: false, sweetSpots: false, temperature: false },
+      layerVisibility: {
+        bathymetry: false,
+        weed: false,
+        fishDensity: false,
+        sweetSpots: false,
+        temperature: false,
+      },
     });
     useDeeperMapsStore.setState({
       scans: { [scan.id]: scan },
@@ -402,7 +432,13 @@ describe('<MapView/>', () => {
     mock.__resetAll();
 
     const scan = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
-      layerVisibility: { bathymetry: true, weed: false, fishDensity: false, sweetSpots: false, temperature: true },
+      layerVisibility: {
+        bathymetry: true,
+        weed: false,
+        fishDensity: false,
+        sweetSpots: false,
+        temperature: true,
+      },
     });
     useDeeperMapsStore.setState({
       scans: { [scan.id]: scan },
@@ -430,7 +466,13 @@ describe('<MapView/>', () => {
     mock.__resetAll();
 
     const scan = makeScan('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', {
-      layerVisibility: { bathymetry: true, weed: false, fishDensity: false, sweetSpots: false, temperature: false },
+      layerVisibility: {
+        bathymetry: true,
+        weed: false,
+        fishDensity: false,
+        sweetSpots: false,
+        temperature: false,
+      },
     });
     useDeeperMapsStore.setState({
       scans: { [scan.id]: scan },
@@ -473,7 +515,13 @@ describe('<MapView/>', () => {
     mock.__resetAll();
 
     const scan = makeScan('cccccccc-cccc-cccc-cccc-cccccccccccc', {
-      layerVisibility: { bathymetry: false, weed: false, fishDensity: false, sweetSpots: false, temperature: true },
+      layerVisibility: {
+        bathymetry: false,
+        weed: false,
+        fishDensity: false,
+        sweetSpots: false,
+        temperature: true,
+      },
     });
     useDeeperMapsStore.setState({
       scans: { [scan.id]: scan },
@@ -496,7 +544,13 @@ describe('<MapView/>', () => {
       useDeeperMapsStore.setState({
         scans: {
           'cccccccc-cccc-cccc-cccc-cccccccccccc': makeScan('cccccccc-cccc-cccc-cccc-cccccccccccc', {
-            layerVisibility: { bathymetry: false, weed: false, fishDensity: false, sweetSpots: false, temperature: false },
+            layerVisibility: {
+              bathymetry: false,
+              weed: false,
+              fishDensity: false,
+              sweetSpots: false,
+              temperature: false,
+            },
           }),
         },
         activeScanId: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
@@ -550,7 +604,17 @@ describe('<MapView/>', () => {
     expect(tempExprStr).toContain('20.6');
     expect(tempExprStr).toContain('24.4');
     // Must NOT be the fallback [0, ..., 1, ...] range only.
-    expect(tempExprStr).not.toBe(JSON.stringify(['interpolate', ['linear'], ['get', 'level'], 0, expect.anything(), 1, expect.anything()]));
+    expect(tempExprStr).not.toBe(
+      JSON.stringify([
+        'interpolate',
+        ['linear'],
+        ['get', 'level'],
+        0,
+        expect.anything(),
+        1,
+        expect.anything(),
+      ]),
+    );
 
     // Bathymetry fill-color expression must include the actual depth levels.
     const bathCall = mock.__setPaintPropertyCalls.find(

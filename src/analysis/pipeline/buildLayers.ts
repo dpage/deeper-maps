@@ -194,10 +194,7 @@ function buildWeedContours(cells: CategorisedCells, scale: ScaleRange): FeatureC
   return { type: 'FeatureCollection', features };
 }
 
-function buildTemperatureContours(
-  cells: CategorisedCells,
-  scale: ScaleRange,
-): FeatureCollection {
+function buildTemperatureContours(cells: CategorisedCells, scale: ScaleRange): FeatureCollection {
   const tempCells = cells.rows.filter((c) => c.mean_temp_c !== undefined);
   if (tempCells.length === 0) return emptyFc();
   const anchor = projectionFromCells(cells);
@@ -356,9 +353,7 @@ export function buildLayers(
   const depths = clean.rows.map((r) => r.depth_m);
   const weeds = cells.rows.map((c) => c.mean_weed);
   const fishRates = cells.rows.map((c) => c.fish_rate);
-  const temps = cells.rows
-    .map((c) => c.mean_temp_c)
-    .filter((v): v is number => v !== undefined);
+  const temps = cells.rows.map((c) => c.mean_temp_c).filter((v): v is number => v !== undefined);
 
   const scales: LayerScales = {
     depth: safeScale(depths, colorScale.outlierTrimPct, BATHYMETRY_CONTOUR_LEVELS),
