@@ -6,9 +6,19 @@ import type maplibregl from 'maplibre-gl';
 export const WEED_SOURCE_ID = 'weed';
 export const WEED_LAYER_ID = 'weed-fill';
 
-export function buildWeedStyle(scale: ScaleRange): LayerStyle {
+export function buildWeedColorExpression(
+  scale: ScaleRange,
+): maplibregl.ExpressionSpecification {
   const colorStops = quantileColorStops(scale.levels, greensRamp);
+  return [
+    'interpolate',
+    ['linear'],
+    ['get', 'level'],
+    ...colorStops,
+  ] as unknown as maplibregl.ExpressionSpecification;
+}
 
+export function buildWeedStyle(scale: ScaleRange): LayerStyle {
   return {
     source: {
       type: 'geojson',
@@ -19,12 +29,7 @@ export function buildWeedStyle(scale: ScaleRange): LayerStyle {
       type: 'fill',
       source: WEED_SOURCE_ID,
       paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['get', 'level'],
-          ...colorStops,
-        ] as unknown as maplibregl.ExpressionSpecification,
+        'fill-color': buildWeedColorExpression(scale),
         'fill-opacity': 0.55,
       },
       layout: { visibility: 'visible' },

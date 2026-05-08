@@ -11,12 +11,22 @@ export interface LayerStyle {
 
 import type maplibregl from 'maplibre-gl';
 
+export function buildBathymetryColorExpression(
+  scale: ScaleRange,
+): maplibregl.ExpressionSpecification {
+  const colorStops = quantileColorStops(scale.levels, viridisRamp);
+  return [
+    'interpolate',
+    ['linear'],
+    ['get', 'level'],
+    ...colorStops,
+  ] as unknown as maplibregl.ExpressionSpecification;
+}
+
 export function buildBathymetryStyle(scale: ScaleRange): LayerStyle {
   // Build interpolate stops for fill-color from the quantile-based level
   // schedule, so dense regions of the depth distribution receive a wider
   // colour range than the linear-min-to-max mapping would give.
-  const colorStops = quantileColorStops(scale.levels, viridisRamp);
-
   return {
     source: {
       type: 'geojson',
@@ -27,12 +37,7 @@ export function buildBathymetryStyle(scale: ScaleRange): LayerStyle {
       type: 'fill',
       source: BATHYMETRY_SOURCE_ID,
       paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['get', 'level'],
-          ...colorStops,
-        ] as unknown as maplibregl.ExpressionSpecification,
+        'fill-color': buildBathymetryColorExpression(scale),
         'fill-opacity': 0.65,
       },
       layout: { visibility: 'visible' },

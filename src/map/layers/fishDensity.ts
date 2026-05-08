@@ -7,9 +7,19 @@ export const FISH_DENSITY_SOURCE_ID = 'fish-density';
 export const FISH_DENSITY_LAYER_ID = 'fish-density-circles';
 export const FISH_ICON_NAME = 'fish-icon';
 
-export function buildFishDensityStyle(scale: ScaleRange): LayerStyle {
+export function buildFishDensityColorExpression(
+  scale: ScaleRange,
+): maplibregl.ExpressionSpecification {
   const colorStops = quantileColorStops(scale.levels, ylOrRdRamp);
+  return [
+    'interpolate',
+    ['linear'],
+    ['get', 'fish_rate'],
+    ...colorStops,
+  ] as unknown as maplibregl.ExpressionSpecification;
+}
 
+export function buildFishDensityStyle(scale: ScaleRange): LayerStyle {
   return {
     source: {
       type: 'geojson',
@@ -45,12 +55,7 @@ export function buildFishDensityStyle(scale: ScaleRange): LayerStyle {
         visibility: 'visible',
       },
       paint: {
-        'icon-color': [
-          'interpolate',
-          ['linear'],
-          ['get', 'fish_rate'],
-          ...colorStops,
-        ] as unknown as maplibregl.ExpressionSpecification,
+        'icon-color': buildFishDensityColorExpression(scale),
         'icon-opacity': 0.95,
         'icon-halo-color': '#222',
         'icon-halo-width': 0.6,

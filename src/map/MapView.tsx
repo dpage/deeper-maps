@@ -1,23 +1,27 @@
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef } from 'react';
+import type { LayerBundle } from '../analysis/types';
 import { useDeeperMapsStore } from '../state/store';
 import type { BaseLayerId, LayerVisibility } from '../storage/types';
 import { buildFishIcon } from './fishIcon';
 import {
   BATHYMETRY_LAYER_ID,
   BATHYMETRY_SOURCE_ID,
+  buildBathymetryColorExpression,
   buildBathymetryStyle,
 } from './layers/bathymetry';
 import {
   BATHYMETRY_LINES_LAYER_ID,
   BATHYMETRY_LINES_SOURCE_ID,
+  buildBathymetryLinesColorExpression,
   buildBathymetryLinesStyle,
 } from './layers/bathymetryLines';
 import {
   FISH_DENSITY_LAYER_ID,
   FISH_DENSITY_SOURCE_ID,
   FISH_ICON_NAME,
+  buildFishDensityColorExpression,
   buildFishDensityStyle,
 } from './layers/fishDensity';
 import {
@@ -28,9 +32,15 @@ import {
 import {
   TEMPERATURE_LAYER_ID,
   TEMPERATURE_SOURCE_ID,
+  buildTemperatureColorExpression,
   buildTemperatureStyle,
 } from './layers/temperature';
-import { WEED_LAYER_ID, WEED_SOURCE_ID, buildWeedStyle } from './layers/weed';
+import {
+  WEED_LAYER_ID,
+  WEED_SOURCE_ID,
+  buildWeedColorExpression,
+  buildWeedStyle,
+} from './layers/weed';
 
 // `maxzoom` on the raster source caps the highest zoom level at which MapLibre
 // will request tiles. Beyond it, MapLibre re-uses (overzooms) the highest
@@ -115,6 +125,22 @@ function styleFor(base: BaseLayerId): maplibregl.StyleSpecification {
 }
 
 type SetDataSrc = { setData: (d: GeoJSON.FeatureCollection) => void };
+
+/**
+ * Update the colour-interpolate expressions for all scale-driven overlay
+ * layers to reflect the scan's actual data range. Must be called after
+ * the sources have been registered (i.e. inside or after addOverlaysAndReplay)
+ * and after every layerBundle update, so that values outside the initial
+ * fallback [0, 1] range are rendered with the correct colour rather than being
+ * clamped to the ramp endpoint.
+ */
+function applyColorExpressions(map: MapLibreMap, bundle: LayerBundle): void {
+  map.setPaintProperty(BATHYMETRY_LAYER_ID, 'fill-color', buildBathymetryColorExpression(bundle.scales.depth));
+  map.setPaintProperty(WEED_LAYER_ID, 'fill-color', buildWeedColorExpression(bundle.scales.weed));
+  map.setPaintProperty(BATHYMETRY_LINES_LAYER_ID, 'line-color', buildBathymetryLinesColorExpression(bundle.scales.depth));
+  map.setPaintProperty(TEMPERATURE_LAYER_ID, 'fill-color', buildTemperatureColorExpression(bundle.scales.temperature));
+  map.setPaintProperty(FISH_DENSITY_LAYER_ID, 'icon-color', buildFishDensityColorExpression(bundle.scales.fishRate));
+}
 
 export function MapView(): JSX.Element {
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -207,6 +233,7 @@ export function MapView(): JSX.Element {
       (map.getSource(SWEET_SPOTS_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         initialBundle.sweetSpots,
       );
+      applyColorExpressions(map, initialBundle);
     }
     const initialScanId = snapshot.activeScanId;
     const initialScan = initialScanId ? snapshot.scans[initialScanId] : undefined;
@@ -301,6 +328,7 @@ export function MapView(): JSX.Element {
       (map.getSource(SWEET_SPOTS_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         layerBundle.sweetSpots,
       );
+      applyColorExpressions(map, layerBundle);
       if (layerBundle.bounds && activeScanId && activeScanId !== lastFramedScanIdRef.current) {
         map.fitBounds([layerBundle.bounds.sw, layerBundle.bounds.ne], {
           padding: 40,

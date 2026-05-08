@@ -8,6 +8,7 @@ import { useDeeperMapsStore } from '../../state/store';
 import { closeDeeperMapsDb } from '../../storage/db';
 import type { StoredScan } from '../../storage/types';
 import { MapView } from '../MapView';
+import { BATHYMETRY_LAYER_ID } from '../layers/bathymetry';
 import { BATHYMETRY_LINES_LAYER_ID } from '../layers/bathymetryLines';
 import { TEMPERATURE_LAYER_ID } from '../layers/temperature';
 
@@ -508,5 +509,62 @@ describe('<MapView/>', () => {
       name: 'visibility',
       value: 'none',
     });
+  });
+
+  it('updates fill-color and line-color paint expressions when layerBundle arrives with non-trivial levels', async () => {
+    // Regression test: when a scan delivers levels outside [0, 1] (e.g.
+    // temperature 20–25 °C, depth 1–4 m), MapView must call setPaintProperty
+    // with expressions derived from those actual levels so that values are not
+    // all clamped to the ramp endpoint.
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const bundle: LayerBundle = {
+      bathymetry: { type: 'FeatureCollection', features: [] },
+      weed: { type: 'FeatureCollection', features: [] },
+      bathymetryLines: { type: 'FeatureCollection', features: [] },
+      fishDensity: { type: 'FeatureCollection', features: [] },
+      sweetSpots: { type: 'FeatureCollection', features: [] },
+      temperature: { type: 'FeatureCollection', features: [] },
+      scales: {
+        depth: { min: 1.0, max: 4.0, levels: [1.0, 2.0, 3.0, 4.0] },
+        weed: { min: 0.1, max: 0.8, levels: [0.1, 0.4, 0.8] },
+        fishRate: { min: 0.05, max: 0.5, levels: [0.05, 0.2, 0.5] },
+        temperature: { min: 20.6, max: 24.4, levels: [20.6, 22.0, 24.4] },
+      },
+      bounds: null,
+      tempStats: null,
+    };
+
+    useDeeperMapsStore.setState({ layerBundle: bundle });
+    render(<MapView />);
+    await new Promise((r) => setTimeout(r, 5));
+
+    // Temperature fill-color expression must include the actual temperature
+    // level values (not just the fallback 0 and 1).
+    const tempCall = mock.__setPaintPropertyCalls.find(
+      (c) => c.layerId === TEMPERATURE_LAYER_ID && c.name === 'fill-color',
+    );
+    expect(tempCall).toBeDefined();
+    const tempExprStr = JSON.stringify(tempCall?.value);
+    expect(tempExprStr).toContain('20.6');
+    expect(tempExprStr).toContain('24.4');
+    // Must NOT be the fallback [0, ..., 1, ...] range only.
+    expect(tempExprStr).not.toBe(JSON.stringify(['interpolate', ['linear'], ['get', 'level'], 0, expect.anything(), 1, expect.anything()]));
+
+    // Bathymetry fill-color expression must include the actual depth levels.
+    const bathCall = mock.__setPaintPropertyCalls.find(
+      (c) => c.layerId === BATHYMETRY_LAYER_ID && c.name === 'fill-color',
+    );
+    expect(bathCall).toBeDefined();
+    const bathExprStr = JSON.stringify(bathCall?.value);
+    expect(bathExprStr).toContain('1');
+    expect(bathExprStr).toContain('4');
+
+    // Bath-lines line-color must also be updated.
+    const linesCall = mock.__setPaintPropertyCalls.find(
+      (c) => c.layerId === BATHYMETRY_LINES_LAYER_ID && c.name === 'line-color',
+    );
+    expect(linesCall).toBeDefined();
   });
 });

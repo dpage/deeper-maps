@@ -6,9 +6,19 @@ import type { LayerStyle } from './bathymetry';
 export const TEMPERATURE_SOURCE_ID = 'temperature';
 export const TEMPERATURE_LAYER_ID = 'temperature-fill';
 
-export function buildTemperatureStyle(scale: ScaleRange): LayerStyle {
+export function buildTemperatureColorExpression(
+  scale: ScaleRange,
+): maplibregl.ExpressionSpecification {
   const colorStops = quantileColorStops(scale.levels, plasmaRamp);
+  return [
+    'interpolate',
+    ['linear'],
+    ['get', 'level'],
+    ...colorStops,
+  ] as unknown as maplibregl.ExpressionSpecification;
+}
 
+export function buildTemperatureStyle(scale: ScaleRange): LayerStyle {
   return {
     source: {
       type: 'geojson',
@@ -19,12 +29,7 @@ export function buildTemperatureStyle(scale: ScaleRange): LayerStyle {
       type: 'fill',
       source: TEMPERATURE_SOURCE_ID,
       paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['get', 'level'],
-          ...colorStops,
-        ] as unknown as maplibregl.ExpressionSpecification,
+        'fill-color': buildTemperatureColorExpression(scale),
         'fill-opacity': 0.55,
       },
       layout: { visibility: 'visible' },

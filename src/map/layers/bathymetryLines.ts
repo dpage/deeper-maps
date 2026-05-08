@@ -17,9 +17,19 @@ export const BATHYMETRY_LINES_LAYER_ID = 'bathymetry-lines-layer';
  * Default visibility is `none` because the visibility effect manages the
  * bath-fill / bath-lines toggle conditionally based on weed visibility.
  */
-export function buildBathymetryLinesStyle(scale: ScaleRange): LayerStyle {
+export function buildBathymetryLinesColorExpression(
+  scale: ScaleRange,
+): maplibregl.ExpressionSpecification {
   const colorStops = quantileColorStops(scale.levels, viridisRamp);
+  return [
+    'interpolate',
+    ['linear'],
+    ['get', 'level'],
+    ...colorStops,
+  ] as unknown as maplibregl.ExpressionSpecification;
+}
 
+export function buildBathymetryLinesStyle(scale: ScaleRange): LayerStyle {
   return {
     source: {
       type: 'geojson',
@@ -30,12 +40,7 @@ export function buildBathymetryLinesStyle(scale: ScaleRange): LayerStyle {
       type: 'line',
       source: BATHYMETRY_LINES_SOURCE_ID,
       paint: {
-        'line-color': [
-          'interpolate',
-          ['linear'],
-          ['get', 'level'],
-          ...colorStops,
-        ] as unknown as maplibregl.ExpressionSpecification,
+        'line-color': buildBathymetryLinesColorExpression(scale),
         'line-width': 1.2,
         'line-opacity': 0.9,
       },
