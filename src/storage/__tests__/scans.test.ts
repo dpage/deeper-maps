@@ -15,6 +15,7 @@ import {
   loadScanRawFiles,
   loadScanResults,
   renameScan,
+  replaceScanAndRawFiles,
   saveScan,
   saveScanResults,
 } from '../scans';
@@ -162,6 +163,52 @@ describe('scans CRUD', () => {
 
     const loaded = await loadScanResults(scan.id);
     expect(loaded?.bundle.scales.depth.max).toBe(2.5);
+  });
+
+  it('replaceScanAndRawFiles swaps raw files, updates the scan, and drops cached results', async () => {
+    const scan = makeScan();
+    await saveScan(scan, [
+      { fileName: 'original.zip', blob: new NodeBlob([new Uint8Array([1])]) as unknown as Blob },
+    ]);
+    await saveScanResults({
+      scanId: scan.id,
+      bundleVersion: 1,
+      builtAt: 0,
+      bundle: {
+        bathymetry: { type: 'FeatureCollection', features: [] },
+        weed: { type: 'FeatureCollection', features: [] },
+        bathymetryLines: { type: 'FeatureCollection', features: [] },
+        fishDensity: { type: 'FeatureCollection', features: [] },
+        sweetSpots: { type: 'FeatureCollection', features: [] },
+        temperature: { type: 'FeatureCollection', features: [] },
+        scales: {
+          depth: { min: 0, max: 1, levels: [] },
+          weed: { min: 0, max: 1, levels: [] },
+          fishRate: { min: 0, max: 1, levels: [] },
+          temperature: { min: 0, max: 1, levels: [] },
+        },
+        bounds: null,
+        tempStats: null,
+      },
+    });
+
+    const updated = makeScan({ contentHash: 'merged-hash', updatedAt: 1700000099999 });
+    await replaceScanAndRawFiles(updated, [
+      {
+        fileName: 'merged-scan.zip',
+        blob: new NodeBlob([new Uint8Array([9, 9])]) as unknown as Blob,
+      },
+    ]);
+
+    // The old raw file is gone; only the merged one remains (no double-count).
+    const raws = await loadScanRawFiles(scan.id);
+    expect(raws.map((r) => r.fileName)).toEqual(['merged-scan.zip']);
+    expect(new Uint8Array(await raws[0]!.blob.arrayBuffer())).toEqual(new Uint8Array([9, 9]));
+
+    const list = await listScans();
+    expect(list[0]?.contentHash).toBe('merged-hash');
+    // Stale cached results were dropped.
+    expect(await loadScanResults(scan.id)).toBeUndefined();
   });
 
   it('returns scans newest-first in listScans', async () => {

@@ -27,6 +27,40 @@ export async function saveScan(scan: StoredScan, rawFiles: RawFileToSave[]): Pro
   await tx.done;
 }
 
+/**
+ * Atomically swap a scan's raw files for a new set, updating the scan record
+ * itself in the same transaction. Used by the merge flow, where a scan's
+ * single stored archive is replaced with a freshly-combined one.
+ *
+ * Unlike {@link saveScan} (a pure upsert that only ADDS raw files), this DELETES
+ * every existing raw file for the scan first, so a merge can't leave the old
+ * pre-merge archive behind — which would otherwise be re-parsed alongside the
+ * merged one and double-count every row. The cached results are dropped too, so
+ * a re-select before re-analysis finishes shows nothing stale rather than the
+ * old bundle.
+ */
+export async function replaceScanAndRawFiles(
+  scan: StoredScan,
+  rawFiles: RawFileToSave[],
+): Promise<void> {
+  const db = await openDeeperMapsDb();
+  const tx = db.transaction(['scans', 'scanRawFiles', 'scanResults'], 'readwrite');
+  await tx.objectStore('scans').put(scan);
+  await tx.objectStore('scanResults').delete(scan.id);
+
+  const filesStore = tx.objectStore('scanRawFiles');
+  const range = IDBKeyRange.bound([scan.id, ''], [scan.id, '￿']);
+  let cursor = await filesStore.openCursor(range);
+  while (cursor) {
+    await cursor.delete();
+    cursor = await cursor.continue();
+  }
+  for (const f of rawFiles) {
+    await filesStore.put({ scanId: scan.id, fileName: f.fileName, blob: f.blob });
+  }
+  await tx.done;
+}
+
 export async function listScans(): Promise<StoredScan[]> {
   const db = await openDeeperMapsDb();
   const all = await db.getAll('scans');

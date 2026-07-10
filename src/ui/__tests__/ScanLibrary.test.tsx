@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -11,7 +11,10 @@ import {
 import { useDeeperMapsStore } from '../../state/store';
 import { closeDeeperMapsDb } from '../../storage/db';
 import type { StoredScan } from '../../storage/types';
+import { triggerDownload } from '../../lib/download';
 import { ScanLibrary } from '../ScanLibrary';
+
+vi.mock('../../lib/download', () => ({ triggerDownload: vi.fn() }));
 
 const DEFAULTS = {
   liftout: DEFAULT_LIFTOUT_OPTIONS,
@@ -137,6 +140,42 @@ describe('<ScanLibrary/>', () => {
     expect(deleteSpy).not.toHaveBeenCalled();
     renameSpy.mockRestore();
     deleteSpy.mockRestore();
+  });
+
+  it('per-item menu: Merge scan… opens the merge dialog', async () => {
+    const user = userEvent.setup();
+    render(<ScanLibrary onRequestUpload={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: /more actions for lake a/i }));
+    await user.click(screen.getByRole('menuitem', { name: /merge scan/i }));
+    expect(screen.getByRole('dialog')).toHaveTextContent(/merge into/i);
+    expect(screen.getByText(/merge into/i)).toHaveTextContent('Lake A');
+  });
+
+  it('per-item menu: Export builds a blob via the store and triggers a download', async () => {
+    const user = userEvent.setup();
+    const blob = new Blob(['zip'], { type: 'application/zip' });
+    const exportSpy = vi
+      .spyOn(useDeeperMapsStore.getState(), 'exportScan')
+      .mockResolvedValue({ blob, fileName: 'Lake A.zip' });
+    render(<ScanLibrary onRequestUpload={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: /more actions for lake a/i }));
+    await user.click(screen.getByRole('menuitem', { name: /export/i }));
+    await waitFor(() =>
+      expect(exportSpy).toHaveBeenCalledWith('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+    );
+    await waitFor(() => expect(triggerDownload).toHaveBeenCalledWith(blob, 'Lake A.zip'));
+    exportSpy.mockRestore();
+  });
+
+  it('shows a merged-source count for scans built from more than one export', () => {
+    const merged = makeScan('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Lake C');
+    merged.fileMeta = [
+      { name: 'first.zip', byteSize: 1, sha256: 'a' },
+      { name: 'second.zip', byteSize: 1, sha256: 'b' },
+    ];
+    useDeeperMapsStore.setState({ scans: { [merged.id]: merged } });
+    render(<ScanLibrary onRequestUpload={vi.fn()} />);
+    expect(screen.getByText('2 scans merged')).toBeInTheDocument();
   });
 
   it('per-item menu: Delete invokes the store action when confirmed, no-op when cancelled', async () => {

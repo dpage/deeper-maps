@@ -34,7 +34,7 @@ function isRecognisedEntry(name: string): boolean {
   return RECOGNISED.has(base.toLowerCase());
 }
 
-function expandZips(uploads: UploadFile[]): UploadFile[] {
+export function expandZips(uploads: UploadFile[]): UploadFile[] {
   const out: UploadFile[] = [];
   for (const u of uploads) {
     if (u.fileName.toLowerCase().endsWith('.zip')) {

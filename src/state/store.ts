@@ -5,11 +5,19 @@ import {
   loadScanRawFiles,
   loadScanResults,
   renameScan as dbRenameScan,
+  replaceScanAndRawFiles,
   saveScan,
   saveScanResults,
 } from '../storage/scans';
-import type { BaseLayerId, LayerVisibility, StoredScan } from '../storage/types';
+import type { BaseLayerId, LayerVisibility, PersistedFileMeta, StoredScan } from '../storage/types';
 import { CURRENT_BUNDLE_VERSION, type LayerBundle, type PipelineOptions } from '../analysis/types';
+import {
+  buildQuestZip,
+  extractQuestCsvs,
+  mergeQuestArchives,
+  type QuestUpload,
+} from '../analysis/parsers/questArchive';
+import { scanContentHash, sha256Hex } from '../lib/hash';
 import type { PipelineStage, WorkerRequest, WorkerResponse } from '../worker/protocol';
 
 const DEBOUNCE_MS = 200;
@@ -95,6 +103,45 @@ export interface DeeperMapsState {
   setBaseLayer: (base: BaseLayerId) => void;
   renameScan: (scanId: string, name: string) => Promise<void>;
   deleteScan: (scanId: string) => Promise<void>;
+  /**
+   * Merge a freshly-uploaded scan INTO an existing one: combine the raw CSV
+   * data, replace the target's stored archive with the merged result, and
+   * re-analyse. Used when re-visiting a lake produces a second Deeper export.
+   */
+  mergeScan: (targetScanId: string, upload: QuestUpload) => Promise<void>;
+  /**
+   * Build a shareable zip of a scan (including any merged-in data) in the same
+   * `bathymetry.csv` + `sonar.csv` layout the app imports. Returns the blob and
+   * a suggested download filename; the caller triggers the actual download.
+   */
+  exportScan: (scanId: string) => Promise<{ blob: Blob; fileName: string }>;
+}
+
+/** Internal filename for a merged scan's single combined archive. */
+const MERGED_RAW_FILENAME = 'merged-scan.zip';
+
+/**
+ * Load a scan's stored raw files and decode each blob to bytes — the shape the
+ * archive helpers ({@link extractQuestCsvs}) and worker expect.
+ */
+async function loadScanUploads(scanId: string): Promise<QuestUpload[]> {
+  const raws = await loadScanRawFiles(scanId);
+  return Promise.all(
+    raws.map(async (r) => ({
+      fileName: r.fileName,
+      bytes: new Uint8Array(await r.blob.arrayBuffer()),
+    })),
+  );
+}
+
+/**
+ * Make a scan name safe to use as a download filename: strip characters that
+ * are illegal on common filesystems and collapse surrounding whitespace. Falls
+ * back to a generic name if nothing usable remains.
+ */
+function toExportFileName(scanName: string): string {
+  const cleaned = scanName.replace(/[\\/:*?"<>|]+/g, '_').trim();
+  return `${cleaned || 'scan'}.zip`;
 }
 
 function getWorker(): Worker {
@@ -450,6 +497,62 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
           layerBundle: s.activeScanId === scanId ? null : s.layerBundle,
         };
       });
+    },
+
+    async mergeScan(targetScanId, upload) {
+      const target = get().scans[targetScanId];
+      if (!target) throw new Error(`mergeScan: no scan with id ${targetScanId}`);
+
+      // Combine the target's existing CSVs with the new upload's. `extractQuestCsvs`
+      // throws if either side is missing bathymetry.csv, which surfaces to the
+      // dialog as an inline error rather than a corrupt merge.
+      const existing = extractQuestCsvs(await loadScanUploads(targetScanId));
+      const incoming = extractQuestCsvs([upload]);
+      const merged = mergeQuestArchives([existing, incoming]);
+      const zipBytes = buildQuestZip(merged);
+
+      // Hash the merged CONTENT (not the zip container) so the value is stable
+      // and comparable regardless of how the archive was packed.
+      const contentHash = await scanContentHash([
+        { fileName: 'bathymetry.csv', bytes: merged.bathymetry },
+        ...(merged.sonar ? [{ fileName: 'sonar.csv', bytes: merged.sonar }] : []),
+      ]);
+
+      const sourceMeta: PersistedFileMeta = {
+        name: upload.fileName,
+        byteSize: upload.bytes.length,
+        sha256: await sha256Hex(upload.bytes),
+      };
+      const updated: StoredScan = {
+        ...target,
+        contentHash,
+        updatedAt: Date.now(),
+        // Append the merged source so fileMeta.length reflects how many exports
+        // this scan is built from (surfaced in the library as "N scans merged").
+        fileMeta: [...target.fileMeta, sourceMeta],
+      };
+
+      await replaceScanAndRawFiles(updated, [
+        { fileName: MERGED_RAW_FILENAME, blob: new Blob([zipBytes], { type: 'application/zip' }) },
+      ]);
+
+      // Reflect the new metadata in memory, then (re-)activate. Because
+      // replaceScanAndRawFiles dropped the cached results, setActiveScan misses
+      // the cache and re-analyses from the freshly-merged archive — and it
+      // bumps frameRequestSeq so the map reframes over the combined extent.
+      set((s) => ({ scans: { ...s.scans, [updated.id]: updated } }));
+      await get().setActiveScan(updated.id);
+    },
+
+    async exportScan(scanId) {
+      const scan = get().scans[scanId];
+      if (!scan) throw new Error(`exportScan: no scan with id ${scanId}`);
+      const csvs = extractQuestCsvs(await loadScanUploads(scanId));
+      const zipBytes = buildQuestZip(csvs);
+      return {
+        blob: new Blob([zipBytes], { type: 'application/zip' }),
+        fileName: toExportFileName(scan.name),
+      };
     },
   };
 });

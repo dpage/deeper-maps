@@ -18,6 +18,7 @@ Open `index.html` in a browser to use it. No installation, no server, no account
   - Sweet spots — Gold / Silver / Bronze / Weeded categorical markers
 - Threshold sliders with calibrated defaults; tweak any parameter, see the map update in seconds.
 - Scans library backed by IndexedDB — your scans persist across sessions.
+- Merge a re-visited lake's later exports into one scan, and export any scan (merged or not) back to the import zip format to share with others — both from the scan's kebab menu.
 - Single-file `index.html` distribution — runs from a USB stick on any modern browser.
 
 ## Quickstart

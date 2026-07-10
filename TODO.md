@@ -5,7 +5,7 @@ Features documented in the design spec but not built in v1. Each is independentl
 ## High priority
 
 - **Boat track overlay** — polyline of GPS path under the existing layers. Uses the existing `CleanBath.rows` data (no pipeline change). Visibility toggle alongside the four current layers.
-- **Multi-scan merging** — group scans of the same lake into a single analysis. Adds a "lake" concept to the storage schema; merges multiple `RawScan` objects through the pipeline. The HANDOFF doc describes this need.
+- ~~**Multi-scan merging**~~ — _Done (Unreleased)._ Implemented as a raw-CSV merge: "Merge scan…" on the kebab menu combines a second export's `bathymetry.csv`/`sonar.csv` into an existing scan, which is re-analysed as one (separate visits fall into separate sessions via the existing time-gap partitioning). A fuller "lake" grouping concept in the storage schema — keeping constituent scans individually addressable — remains a possible future refinement.
 - **Click-cell-to-show-sonar-waterfall** — popup overlay on click that renders raw amplitude arrays as a 2D heatmap for the cell's pings. Useful for verifying detector decisions visually.
 
 ## Medium priority
