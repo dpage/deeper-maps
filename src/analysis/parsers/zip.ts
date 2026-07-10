@@ -1,4 +1,4 @@
-import { unzipSync, strFromU8 } from 'fflate';
+import { unzipSync } from 'fflate';
 import type { RawScan, SourceFileMeta } from './types';
 import { parseQuestBathymetry, parseQuestSonar, type ParseDiagnostics } from './quest';
 
@@ -14,20 +14,34 @@ export interface UploadResult {
 
 const RECOGNISED = new Set(['bathymetry.csv', 'sonar.csv']);
 
+/**
+ * Whether a zip entry is a file we actually parse. Anything else — READMEs,
+ * duplicate depth maps, images, and especially macOS resource-fork junk
+ * (`__MACOSX/` subtrees and AppleDouble `._` sidecars) — is rejected. This
+ * runs as fflate's decompression `filter`, so unrecognised entries are never
+ * inflated: on a real Deeper export only bathymetry.csv + sonar.csv are
+ * decompressed, which keeps peak memory bounded to the two files we need
+ * rather than the entire archive. It also removes the Mac-zip shadowing risk,
+ * because the __MACOSX copy is discarded before it can compete with the real
+ * CSV at the archive root.
+ */
+function isRecognisedEntry(name: string): boolean {
+  const segments = name.split('/');
+  if (segments.includes('__MACOSX')) return false;
+  const base = segments[segments.length - 1] ?? name;
+  if (base === '') return false; // directory entry
+  if (base.startsWith('._')) return false;
+  return RECOGNISED.has(base.toLowerCase());
+}
+
 function expandZips(uploads: UploadFile[]): UploadFile[] {
   const out: UploadFile[] = [];
   for (const u of uploads) {
     if (u.fileName.toLowerCase().endsWith('.zip')) {
-      const entries = unzipSync(u.bytes);
+      const entries = unzipSync(u.bytes, { filter: (file) => isRecognisedEntry(file.name) });
       for (const [name, bytes] of Object.entries(entries)) {
         const segments = name.split('/');
-        // Skip macOS resource-fork metadata: __MACOSX/ subtree at any depth, and
-        // AppleDouble (._) sidecar files. Without this filter, a Mac-zipped scan
-        // can shadow real CSVs because expandZips strips parent directories.
-        if (segments.includes('__MACOSX')) continue;
         const base = segments[segments.length - 1] ?? name;
-        if (base.startsWith('._')) continue;
-        if (base === '') continue; // directory entry
         out.push({ fileName: base, bytes });
       }
     } else {
@@ -57,7 +71,7 @@ export async function parseQuestUpload(uploads: UploadFile[]): Promise<UploadRes
   const warnings: string[] = [];
   const source: SourceFileMeta[] = [];
   const bathDiag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
-  const bathymetry = parseQuestBathymetry(strFromU8(bathFile.bytes), bathDiag);
+  const bathymetry = parseQuestBathymetry(bathFile.bytes, bathDiag);
   source.push({ fileName: bathFile.fileName, byteSize: bathFile.bytes.length });
   if (bathDiag.malformedRowCount > 0) {
     warnings.push(
@@ -68,7 +82,7 @@ export async function parseQuestUpload(uploads: UploadFile[]): Promise<UploadRes
   let sonar: RawScan['sonar'] = [];
   if (sonarFile) {
     const sonarDiag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
-    sonar = parseQuestSonar(strFromU8(sonarFile.bytes), sonarDiag);
+    sonar = parseQuestSonar(sonarFile.bytes, sonarDiag);
     source.push({ fileName: sonarFile.fileName, byteSize: sonarFile.bytes.length });
     if (sonarDiag.malformedRowCount > 0) {
       warnings.push(

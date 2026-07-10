@@ -14,6 +14,21 @@ import type { PipelineStage, WorkerRequest, WorkerResponse } from '../worker/pro
 
 const DEBOUNCE_MS = 200;
 
+/**
+ * How long the store waits for ANY message (progress or result) from the
+ * worker after dispatching an analyse/recompute before assuming the worker
+ * has died. iOS Safari silently terminates a Web Worker that exceeds the
+ * per-tab memory ceiling — no `error` event, no result — which is exactly how
+ * a too-large scan "processes then shows nothing". A healthy run keeps the
+ * watchdog reset because the worker emits a `progress` message between every
+ * pipeline stage; only a genuine stall (or OS kill) lets it fire.
+ */
+const WORKER_SILENCE_TIMEOUT_MS = 60_000;
+
+const WORKER_FAILED_MESSAGE =
+  'Processing stopped unexpectedly. This scan may be too large to open on this device — ' +
+  'large scans can exhaust memory on tablets and phones. Try opening it in a desktop browser.';
+
 const LAYER_VISIBILITY_DEFAULTS: LayerVisibility = {
   bathymetry: true,
   weed: true,
@@ -92,8 +107,31 @@ function getWorker(): Worker {
   return w;
 }
 
-function dispatchToWorker(msg: WorkerRequest): void {
-  getWorker().postMessage(msg);
+function dispatchToWorker(msg: WorkerRequest, transfer?: Transferable[]): void {
+  // Transfer (rather than structured-clone) the raw file buffers when supplied:
+  // a 70 MB Uint8Array would otherwise be COPIED across the worker boundary,
+  // doubling peak memory at exactly the moment we can least afford it. Transfer
+  // is safe because the buffers are freshly minted from the stored blob and the
+  // main thread never touches them again after dispatch.
+  if (transfer && transfer.length > 0) {
+    getWorker().postMessage(msg, transfer);
+  } else {
+    getWorker().postMessage(msg);
+  }
+}
+
+// Watchdog: detects a worker that goes silent after a dispatch (see
+// WORKER_SILENCE_TIMEOUT_MS). Module-scoped so it survives across the
+// store's action calls and can be reset by the message listener.
+let watchdogTimer: ReturnType<typeof setTimeout> | null = null;
+let watchdogScanId: string | null = null;
+
+function clearWatchdog(): void {
+  if (watchdogTimer) {
+    clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
+  watchdogScanId = null;
 }
 
 async function persistScan(scan: StoredScan): Promise<void> {
@@ -103,17 +141,22 @@ async function persistScan(scan: StoredScan): Promise<void> {
 // Module-scoped debounce timer. Reset between tests by `resetDebounceTimer`.
 let recomputeTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** @internal — test-only. Clears the in-flight threshold-debounce timer. */
+/** @internal — test-only. Clears the in-flight threshold-debounce and watchdog timers. */
 export function __resetDebounceTimer(): void {
   if (recomputeTimer) {
     clearTimeout(recomputeTimer);
     recomputeTimer = null;
   }
+  clearWatchdog();
 }
 
 // Module-scoped reference to the message listener so tests can subscribe a
 // fresh worker stub each beforeEach without leaking previous listeners.
 let onMessageListener: ((e: MessageEvent<WorkerResponse>) => void) | null = null;
+// Module-scoped reference to the worker `error`/`messageerror` listener. Fires
+// when the worker throws uncaught or dies in a way the browser DOES surface
+// (some iOS OOM kills fire this, some fire nothing — hence the watchdog too).
+let onWorkerErrorListener: (() => void) | null = null;
 
 /**
  * (Re-)attaches the worker message listener to the worker currently on
@@ -124,13 +167,49 @@ let onMessageListener: ((e: MessageEvent<WorkerResponse>) => void) | null = null
 export function __attachWorkerListener(): void {
   if (!onMessageListener) return;
   try {
-    getWorker().addEventListener('message', onMessageListener as EventListener);
+    const w = getWorker();
+    w.addEventListener('message', onMessageListener as EventListener);
+    if (onWorkerErrorListener) {
+      w.addEventListener('error', onWorkerErrorListener as EventListener);
+      w.addEventListener('messageerror', onWorkerErrorListener as EventListener);
+    }
   } catch {
     // Worker not available — caller must wire manually.
   }
 }
 
 export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
+  // Arm the watchdog for a freshly-dispatched analyse/recompute. Reset on
+  // every worker message for the scan (see the listener below); if it fires,
+  // the worker went silent — most likely killed by the OS for running the
+  // device out of memory on an oversized scan.
+  const armWatchdog = (scanId: string): void => {
+    clearWatchdog();
+    watchdogScanId = scanId;
+    watchdogTimer = setTimeout(() => {
+      watchdogTimer = null;
+      const stalledId = watchdogScanId;
+      watchdogScanId = null;
+      // Only surface if the stalled scan is still on screen and we never
+      // rendered a result for it (a recompute over an already-visible bundle
+      // leaves the old data up rather than raising a false alarm).
+      if (stalledId && get().activeScanId === stalledId && get().layerBundle === null) {
+        set({ progress: null, warnings: [WORKER_FAILED_MESSAGE] });
+      }
+    }, WORKER_SILENCE_TIMEOUT_MS);
+    // Don't let a pending watchdog keep a Node test process alive; no-op in the browser.
+    (watchdogTimer as { unref?: () => void }).unref?.();
+  };
+
+  // A worker `error`/`messageerror`: surface it against the active scan so the
+  // user sees *something* instead of a silent dead-end, and stop the watchdog.
+  onWorkerErrorListener = () => {
+    clearWatchdog();
+    if (get().activeScanId) {
+      set({ progress: null, warnings: [WORKER_FAILED_MESSAGE] });
+    }
+  };
+
   // Listen for worker responses; route them into the store.
   //
   // Every response is filtered by `m.scanId === get().activeScanId` so that a
@@ -141,6 +220,16 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
   onMessageListener = (e: MessageEvent<WorkerResponse>) => {
     const m = e.data;
     const isForActiveScan = m.scanId === get().activeScanId;
+
+    // Any message for the watched scan proves the worker is alive: reset the
+    // watchdog on progress, cancel it outright on a terminal message.
+    if (m.scanId === watchdogScanId) {
+      if (m.kind === 'progress') {
+        armWatchdog(m.scanId);
+      } else {
+        clearWatchdog();
+      }
+    }
 
     if (m.kind === 'progress') {
       if (isForActiveScan) {
@@ -248,12 +337,16 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         })),
       );
       if (get().activeScanId !== id) return; // also guard after the Promise.all
-      dispatchToWorker({
-        kind: 'analyse',
-        scanId: id,
-        rawFiles: rawBytes,
-        options: scan.thresholds,
-      });
+      dispatchToWorker(
+        {
+          kind: 'analyse',
+          scanId: id,
+          rawFiles: rawBytes,
+          options: scan.thresholds,
+        },
+        rawBytes.map((r) => r.bytes.buffer),
+      );
+      armWatchdog(id);
     },
 
     async saveAndAnalyse(scan, rawFiles) {
@@ -284,12 +377,16 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
           bytes: new Uint8Array(await r.blob.arrayBuffer()),
         })),
       );
-      dispatchToWorker({
-        kind: 'analyse',
-        scanId: scan.id,
-        rawFiles: rawBytes,
-        options: scan.thresholds,
-      });
+      dispatchToWorker(
+        {
+          kind: 'analyse',
+          scanId: scan.id,
+          rawFiles: rawBytes,
+          options: scan.thresholds,
+        },
+        rawBytes.map((r) => r.bytes.buffer),
+      );
+      armWatchdog(scan.id);
     },
 
     updateThresholds(scanId, thresholds) {
@@ -308,6 +405,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         // TODO(spec §8.3): handle QuotaExceededError on this IDB write.
         void persistScan(scan);
         dispatchToWorker({ kind: 'recompute', scanId, options: thresholds });
+        armWatchdog(scanId);
       }, DEBOUNCE_MS);
     },
 
@@ -361,4 +459,12 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
  */
 export function __getWorkerMessageListener(): ((e: MessageEvent<WorkerResponse>) => void) | null {
   return onMessageListener;
+}
+
+/**
+ * @internal — test-only. Returns the worker `error`/`messageerror` listener the
+ * store registered, so tests can simulate a worker crash without a real Worker.
+ */
+export function __getWorkerErrorListener(): (() => void) | null {
+  return onWorkerErrorListener;
 }

@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.1.0] - 2026-05-08
+## [Unreleased]
+
+### Fixed
+
+- Large scans (tens of MB) that previously appeared to process on iPads and other memory-constrained devices and then displayed nothing now work, or fail with a clear message instead of silently. The CSV parser no longer materialises the whole file as one giant string plus a full array of every cell; it now scans the decompressed bytes line by line, which drastically lowers peak memory. Only the two CSVs we actually parse (`bathymetry.csv` + `sonar.csv`) are decompressed from the upload zip — other archive entries are skipped rather than inflated. Raw file bytes are transferred to (not copied into) the analysis worker.
+- The app now surfaces a message when the analysis worker crashes or goes silent — most often the operating system killing the Web Worker for running out of memory on an oversized scan — instead of leaving the upload spinning with no feedback.
 
 ### Added
 

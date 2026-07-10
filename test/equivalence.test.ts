@@ -40,8 +40,9 @@ function load(name: string): string {
 describe('Python equivalence', () => {
   it('produces matching cell categories and per-cell metrics', () => {
     const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
-    const bath = parseQuestBathymetry(load('reference-bath.csv'), diag);
-    const sonar = parseQuestSonar(load('reference-sonar.csv'), diag);
+    const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
+    const bath = parseQuestBathymetry(enc(load('reference-bath.csv')), diag);
+    const sonar = parseQuestSonar(enc(load('reference-sonar.csv')), diag);
 
     const cleaned = cleanBathymetry(bath, DEFAULT_LIFTOUT_OPTIONS, 0);
     const perPing = analysePings(sonar, cleaned.rows, DEFAULT_SONAR_OPTIONS);

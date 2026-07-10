@@ -11,6 +11,7 @@ import {
 } from '../../analysis/constants';
 import {
   __attachWorkerListener,
+  __getWorkerErrorListener,
   __getWorkerMessageListener,
   __resetDebounceTimer,
   useDeeperMapsStore,
@@ -618,6 +619,30 @@ describe('useDeeperMapsStore — worker message routing', () => {
     await new Promise<void>((r) => setTimeout(r, 0));
     const cached = await loadScanResults(bId);
     expect(cached?.bundle).toEqual(staleBundle);
+  });
+
+  it('surfaces a message when the worker fires an error event (e.g. OOM crash)', () => {
+    useDeeperMapsStore.setState({
+      activeScanId: ACTIVE_ID,
+      progress: { stage: 'parse', processed: 0, total: 1 },
+    });
+
+    const onError = __getWorkerErrorListener();
+    if (!onError) throw new Error('no error listener attached');
+    onError();
+
+    const s = useDeeperMapsStore.getState();
+    expect(s.progress).toBeNull();
+    expect(s.warnings.length).toBe(1);
+    expect(s.warnings[0]).toMatch(/too large/i);
+  });
+
+  it('worker error event is a no-op when no scan is active', () => {
+    useDeeperMapsStore.setState({ activeScanId: null, warnings: [] });
+    const onError = __getWorkerErrorListener();
+    if (!onError) throw new Error('no error listener attached');
+    onError();
+    expect(useDeeperMapsStore.getState().warnings).toEqual([]);
   });
 
   it('drops a stale progress message that arrives for a non-active scan', () => {
