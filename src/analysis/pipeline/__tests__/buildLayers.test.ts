@@ -85,6 +85,29 @@ describe('buildLayers — bathymetry contours', () => {
       expect(sample?.[1]).toBeCloseTo(51.7, 2); // lat
     }
   });
+
+  it('coarsens the grid (does not blow up) for a scan spanning a huge area', () => {
+    // A track spread over ~2 km × 2 km would be > 4,000,000 cells at 1 m — past
+    // MAX_CONTOUR_GRID_CELLS. Exercises fitCellSize's coarsening branch and
+    // proves buildLayers completes instead of stalling on a giant IDW grid.
+    // ~0.018° lat ≈ 2 km; a diagonal track keeps the point count small.
+    const clean: CleanBath = {
+      rows: Array.from({ length: 400 }, (_, i) => ({
+        ts_ms: i * 100,
+        lat: 51.7 + i * 0.000045, // ~5 m per step in lat
+        lon: -1.43 + i * 0.00007, // ~5 m per step in lon
+        depth_m: 1 + (i % 20) * 0.2,
+        session_id: 0,
+        file_id: 0,
+      })),
+      sessions: [],
+      liftoutsRemoved: 0,
+    };
+    const lb = buildLayers(clean, emptyCells, { outlierTrimPct: 0 });
+    // It completed and produced contour geometry along the track.
+    expect(lb.bathymetry.features.length).toBeGreaterThan(0);
+    expect(lb.bounds).not.toBeNull();
+  });
 });
 
 describe('buildLayers — fish density circles', () => {

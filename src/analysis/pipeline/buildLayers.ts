@@ -24,6 +24,29 @@ const IDW_K_NEAREST = 4;
 const IDW_RADIUS_M = 5;
 const METRES_PER_DEG_LAT = 111000;
 
+// Hard ceiling on IDW grid resolution. A geographically spread scan (a long
+// river drift, or several disjoint spots) has a large bounding box that is
+// mostly empty water; at a fixed metre-scale cell size that box can be millions
+// of grid cells — slow to resample and contour, and it bloats the output. If
+// the requested cell size would exceed this many cells, coarsen it. Normal
+// scans (a few hundred metres across) stay well under the cap and are
+// unaffected.
+const MAX_CONTOUR_GRID_CELLS = 500_000;
+
+function fitCellSize(
+  desired: number,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+): number {
+  const w = Math.floor((maxX - minX) / desired) + 1;
+  const h = Math.floor((maxY - minY) / desired) + 1;
+  if (w * h <= MAX_CONTOUR_GRID_CELLS) return desired;
+  // Area ∝ 1/cellSize², so scale up so width×height ≈ the cap.
+  return desired * Math.sqrt((w * h) / MAX_CONTOUR_GRID_CELLS);
+}
+
 type SweetSpotCategory = Exclude<ScanCategory, 'none'>;
 
 const SWEET_SPOT_COLOURS: Record<SweetSpotCategory, string> = {
@@ -111,7 +134,7 @@ function buildBathymetryContours(clean: CleanBath, scale: ScaleRange): FeatureCo
   }
 
   const grid = buildIdwGrid(points, {
-    cellSize: BATHYMETRY_GRID_M,
+    cellSize: fitCellSize(BATHYMETRY_GRID_M, minX, minY, maxX, maxY),
     kNearest: IDW_K_NEAREST,
     radius: IDW_RADIUS_M,
     minX,
@@ -164,7 +187,7 @@ function buildWeedContours(cells: CategorisedCells, scale: ScaleRange): FeatureC
   }
 
   const grid = buildIdwGrid(points, {
-    cellSize: WEED_GRID_M,
+    cellSize: fitCellSize(WEED_GRID_M, minX, minY, maxX, maxY),
     kNearest: IDW_K_NEAREST,
     radius: IDW_RADIUS_M,
     minX,
@@ -217,7 +240,7 @@ function buildTemperatureContours(cells: CategorisedCells, scale: ScaleRange): F
   }
 
   const grid = buildIdwGrid(points, {
-    cellSize: TEMPERATURE_GRID_M,
+    cellSize: fitCellSize(TEMPERATURE_GRID_M, minX, minY, maxX, maxY),
     kNearest: IDW_K_NEAREST,
     radius: IDW_RADIUS_M,
     minX,
