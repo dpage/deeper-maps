@@ -12,6 +12,7 @@ import { ProgressBanner } from './ui/ProgressBanner';
 import { ScanLibrary } from './ui/ScanLibrary';
 import { theme } from './ui/theme';
 import { UploadDialog } from './ui/UploadDialog';
+import { WarningsAlert } from './ui/WarningsAlert';
 
 export function App(): JSX.Element {
   const hydrate = useDeeperMapsStore((s) => s.hydrate);
@@ -45,6 +46,7 @@ export function App(): JSX.Element {
         />
         <UploadDialog open={uploadOpen} onClose={() => setUploadOpen(false)} />
         <CompletionToast />
+        <WarningsAlert />
       </ErrorBoundary>
     </ThemeProvider>
   );

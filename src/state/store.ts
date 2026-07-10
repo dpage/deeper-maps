@@ -312,6 +312,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         activeScanId: id,
         layerBundle: null,
         progress: null,
+        warnings: [],
         frameRequestSeq: s.frameRequestSeq + 1,
       }));
       if (!id) return;
@@ -322,7 +323,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       const cached = await loadScanResults(id);
       if (get().activeScanId !== id) return; // user navigated away during await
       if (cached && cached.bundleVersion === CURRENT_BUNDLE_VERSION) {
-        set({ layerBundle: cached.bundle });
+        set({ layerBundle: cached.bundle, warnings: [] });
         return;
       }
       // Cache miss OR stale version — re-dispatch. (For stale, the worker
@@ -369,6 +370,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         activeScanId: scan.id,
         layerBundle: null,
         progress: null,
+        warnings: [],
         frameRequestSeq: s.frameRequestSeq + 1,
       }));
       const rawBytes = await Promise.all(
