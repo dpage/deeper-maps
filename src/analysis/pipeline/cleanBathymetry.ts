@@ -142,14 +142,24 @@ export function cleanBathymetry(
 
   const sessions: SessionMeta[] = [];
   for (const [id, list] of sessionMap) {
-    const tsList = list.map((r) => r.ts_ms);
+    // Compute the session's time span in a single pass. Do NOT use
+    // `Math.min(...tsList)` / `Math.max(...tsList)`: a long session can hold
+    // hundreds of thousands of pings, and spreading that many arguments into a
+    // function call overflows the call stack ("Maximum call stack size
+    // exceeded") — which is exactly how large scans failed to process.
+    let tStart = Infinity;
+    let tEnd = -Infinity;
+    for (const r of list) {
+      if (r.ts_ms < tStart) tStart = r.ts_ms;
+      if (r.ts_ms > tEnd) tEnd = r.ts_ms;
+    }
     // preCounts always has the id because session ids in cleanRows are derived
     // from survivors which were drawn from deduped where preCounts was built.
     const pre = preCounts.get(id)!;
     sessions.push({
       id,
-      t_start: Math.min(...tsList),
-      t_end: Math.max(...tsList),
+      t_start: tStart,
+      t_end: tEnd,
       n_pings: list.length,
       was_lifted_out_pct: (100 * pre.lifted) / pre.total,
     });

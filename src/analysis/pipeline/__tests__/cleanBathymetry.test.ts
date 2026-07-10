@@ -1,9 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { makeBath } from '../../../../test/fixtures/makeBath';
+import type { BathRow } from '../../parsers/types';
 import { DEFAULT_LIFTOUT_OPTIONS } from '../../constants';
 import { cleanBathymetry } from '../cleanBathymetry';
 
 describe('cleanBathymetry', () => {
+  it('handles a session larger than the argument-spread limit without overflowing the stack', () => {
+    // Regression: per-session t_start/t_end were computed with
+    // Math.min(...tsList) / Math.max(...tsList). A single session on a large
+    // (~70 MB) scan holds hundreds of thousands of pings, and spreading that
+    // many arguments into a call overflows the stack ("Maximum call stack size
+    // exceeded") — the actual reason large scans failed to process. 200k rows
+    // is comfortably past V8's ~125k argument-count limit.
+    const N = 200_000;
+    const t0 = 1_700_000_000_000;
+    const rows: BathRow[] = [];
+    for (let i = 0; i < N; i++) {
+      rows.push({ lat: 51.7, lon: -1.43, depth_m: 5, ts_ms: t0 + i * 67 });
+    }
+    const result = cleanBathymetry(rows, DEFAULT_LIFTOUT_OPTIONS, 0);
+    expect(result.sessions).toHaveLength(1);
+    expect(result.sessions[0]?.t_start).toBe(t0);
+    expect(result.sessions[0]?.t_end).toBe(t0 + (N - 1) * 67);
+    expect(result.rows.length).toBeGreaterThan(0);
+  });
+
   it('removes duplicate timestamps preferring GPS-tagged rows', () => {
     const rows = [
       { lat: 0, lon: 0, depth_m: 1.5, ts_ms: 100 }, // no GPS
