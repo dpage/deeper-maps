@@ -1,6 +1,7 @@
 import { Box, Stack, Typography } from '@mui/material';
 import { useDeeperMapsStore } from '../state/store';
 import { LayerControls } from './LayerControls';
+import { SweetSpotControls } from './SweetSpotControls';
 import { TemperatureStats } from './TemperatureStats';
 import { ThresholdControls } from './ThresholdControls';
 import { ResetDefaultsButton } from './ResetDefaultsButton';
@@ -16,6 +17,7 @@ export function ActiveScanPanel(): JSX.Element | null {
       <Stack spacing={2}>
         <Typography variant="subtitle1">{scan.name}</Typography>
         <LayerControls scan={scan} />
+        <SweetSpotControls scan={scan} />
         <TemperatureStats />
         <ThresholdControls scan={scan} />
         <ResetDefaultsButton scanId={scan.id} />

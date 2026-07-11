@@ -19,7 +19,7 @@ import {
 import { scanContentHash } from '../lib/hash';
 import { useDeeperMapsStore } from '../state/store';
 import { findScanByContentHash } from '../storage/scans';
-import type { StoredScan } from '../storage/types';
+import { DEFAULT_MAX_SWEET_SPOTS, type StoredScan } from '../storage/types';
 
 const DEFAULT_THRESHOLDS = {
   liftout: DEFAULT_LIFTOUT_OPTIONS,
@@ -94,6 +94,7 @@ export function UploadDialog({ open, onClose }: UploadDialogProps): JSX.Element 
           sweetSpots: true,
           temperature: false,
         },
+        maxSweetSpots: DEFAULT_MAX_SWEET_SPOTS,
       };
       await saveAndAnalyse(scan, [{ fileName: file.name, blob: file }]);
       handleClose();

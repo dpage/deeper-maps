@@ -171,6 +171,14 @@ class MockMap {
   setStyle = vi.fn((style: unknown, options?: Record<string, unknown>) => {
     __setStyleCalls.push(options ? { style, options } : { style });
   });
+  // A world-spanning viewport by default so viewport filtering keeps every
+  // sweet spot in component tests (which assert on the data, not the culling).
+  getBounds = vi.fn(() => ({
+    getWest: () => -180,
+    getSouth: () => -90,
+    getEast: () => 180,
+    getNorth: () => 90,
+  }));
   remove = vi.fn();
   resize = vi.fn();
   setCenter = vi.fn();

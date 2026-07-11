@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Sweet-spot limit — a "Max shown" slider in the panel (default 12) caps how many sweet-spot markers appear at once. On busy lakes that categorise hundreds of cells the markers were an unreadable blanket; the map now shows only the best spots (gold → silver → bronze → weeded, then higher fish-rate) within the current viewport, re-picked as you pan and zoom.
 - Collapsible sidebar — the scan list / controls panel can now be opened and closed with an edge handle, so the map is usable on narrow screens. It starts collapsed on phone-width viewports (and capped to 85% width when open, keeping a strip of map and the handle reachable) and open on wider screens.
 - Merge scans — a "Merge scan…" option on each scan's kebab menu lets you upload a second Deeper export and fold its bathymetry and sonar data into an existing scan. Ideal for a lake you re-visit across several sessions: the combined data is re-analysed as one, and separate sessions are kept apart automatically by the existing time-gap partitioning. Scans built from more than one export show an "N scans merged" note in the library.
 - Export scans — an "Export" option on the kebab menu downloads a scan (including any merged-in data) as a `bathymetry.csv` + `sonar.csv` zip in the exact layout the app imports, so combined scans can be shared with others and re-imported anywhere.

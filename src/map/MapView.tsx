@@ -3,7 +3,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef } from 'react';
 import type { LayerBundle } from '../analysis/types';
 import { useDeeperMapsStore } from '../state/store';
-import type { BaseLayerId, LayerVisibility } from '../storage/types';
+import { DEFAULT_MAX_SWEET_SPOTS, type BaseLayerId, type LayerVisibility } from '../storage/types';
 import { buildFishIcon } from './fishIcon';
 import {
   BATHYMETRY_LAYER_ID,
@@ -28,6 +28,7 @@ import {
   SWEET_SPOTS_LAYER_ID,
   SWEET_SPOTS_SOURCE_ID,
   buildSweetSpotsStyle,
+  selectTopSweetSpots,
 } from './layers/sweetSpots';
 import {
   TEMPERATURE_LAYER_ID,
@@ -177,10 +178,16 @@ export function MapView(): JSX.Element {
   // `style.load` handler — so `isStyleLoaded()` is NOT a safe gate for
   // `getSource(...).setData(...)`. This ref is.
   const overlaysReadyRef = useRef(false);
+  // The full, unfiltered sweet-spots FeatureCollection from the current bundle.
+  // The map only ever renders the best N within the viewport (see
+  // `applySweetSpots`); we keep the complete set here so pans/zooms and
+  // limit changes can re-derive that subset without a worker round-trip.
+  const allSweetSpotsRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const layerBundle = useDeeperMapsStore((s) => s.layerBundle);
   const activeScanId = useDeeperMapsStore((s) => s.activeScanId);
   const scans = useDeeperMapsStore((s) => s.scans);
   const activeScan = activeScanId ? scans[activeScanId] : undefined;
+  const maxSweetSpots = activeScan?.maxSweetSpots ?? DEFAULT_MAX_SWEET_SPOTS;
   const baseLayer = useDeeperMapsStore((s) => s.baseLayer);
   const frameRequestSeq = useDeeperMapsStore((s) => s.frameRequestSeq);
 
@@ -193,6 +200,29 @@ export function MapView(): JSX.Element {
   useEffect(() => {
     lastFramedScanIdRef.current = null;
   }, [frameRequestSeq]);
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  /**
+   * Push the best N sweet spots for the current viewport into the sweet-spots
+   * source. Reads the cap and full set fresh (from the store and the ref) so it
+   * is safe to call from a long-lived `moveend` listener without a stale
+   * closure. No-op until a bundle has populated `allSweetSpotsRef`.
+   */
+  const applySweetSpots = (map: MapLibreMap): void => {
+    const fc = allSweetSpotsRef.current;
+    if (!fc) return;
+    const snapshot = useDeeperMapsStore.getState();
+    const scan = snapshot.activeScanId ? snapshot.scans[snapshot.activeScanId] : undefined;
+    const limit = scan?.maxSweetSpots ?? DEFAULT_MAX_SWEET_SPOTS;
+    const b = map.getBounds();
+    const top = selectTopSweetSpots(
+      fc,
+      { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
+      limit,
+    );
+    (map.getSource(SWEET_SPOTS_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(top);
+  };
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
@@ -250,9 +280,8 @@ export function MapView(): JSX.Element {
       (map.getSource(FISH_DENSITY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         initialBundle.fishDensity,
       );
-      (map.getSource(SWEET_SPOTS_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
-        initialBundle.sweetSpots,
-      );
+      allSweetSpotsRef.current = initialBundle.sweetSpots;
+      applySweetSpots(map);
       applyColorExpressions(map, initialBundle);
     }
     const initialScanId = snapshot.activeScanId;
@@ -291,6 +320,10 @@ export function MapView(): JSX.Element {
       addOverlaysAndReplay(map, 0);
       overlaysReadyRef.current = true;
     });
+    // Re-pick the best-N sweet spots for the new extent whenever the user
+    // finishes panning/zooming. Registered once; the handler reads all inputs
+    // fresh so it never goes stale. `map.remove()` tears the listener down.
+    map.on('moveend', () => applySweetSpots(map));
     return () => {
       map.remove();
       mapRef.current = null;
@@ -345,9 +378,8 @@ export function MapView(): JSX.Element {
       (map.getSource(FISH_DENSITY_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
         layerBundle.fishDensity,
       );
-      (map.getSource(SWEET_SPOTS_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(
-        layerBundle.sweetSpots,
-      );
+      allSweetSpotsRef.current = layerBundle.sweetSpots;
+      applySweetSpots(map);
       applyColorExpressions(map, layerBundle);
       if (layerBundle.bounds && activeScanId && activeScanId !== lastFramedScanIdRef.current) {
         map.fitBounds([layerBundle.bounds.sw, layerBundle.bounds.ne], {
@@ -383,6 +415,17 @@ export function MapView(): JSX.Element {
       void map.once('style.load', apply);
     }
   }, [activeScan?.layerVisibility, activeScan]);
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  // Re-derive the visible sweet-spot subset when the per-scan cap changes
+  // (slider drag). The full set in `allSweetSpotsRef` is untouched; only how
+  // many we render changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !overlaysReadyRef.current) return;
+    applySweetSpots(map);
+  }, [maxSweetSpots]);
   /* c8 ignore stop */
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 400 }} />;

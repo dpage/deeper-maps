@@ -414,6 +414,36 @@ describe('useDeeperMapsStore', () => {
     expect(useDeeperMapsStore.getState().scans).toEqual({});
   });
 
+  it('hydrate fills a missing maxSweetSpots with the default', async () => {
+    const legacy = makeScan('legacy-ss', 'legacy', 'hashSS');
+    delete (legacy as { maxSweetSpots?: number }).maxSweetSpots;
+    await saveScan(legacy, []);
+
+    await useDeeperMapsStore.getState().hydrate();
+
+    expect(useDeeperMapsStore.getState().scans['legacy-ss']?.maxSweetSpots).toBe(12);
+  });
+
+  it('setMaxSweetSpots persists and updates the store (rounded, floored at 1)', async () => {
+    const a = makeScan('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'A', 'hashA');
+    await saveScan(a, []);
+    await useDeeperMapsStore.getState().hydrate();
+
+    await useDeeperMapsStore.getState().setMaxSweetSpots(a.id, 25);
+    expect(useDeeperMapsStore.getState().scans[a.id]?.maxSweetSpots).toBe(25);
+
+    // Rounds fractional slider values and never drops below 1.
+    await useDeeperMapsStore.getState().setMaxSweetSpots(a.id, 0);
+    expect(useDeeperMapsStore.getState().scans[a.id]?.maxSweetSpots).toBe(1);
+  });
+
+  it('setMaxSweetSpots is a no-op for an unknown scan id', async () => {
+    await useDeeperMapsStore
+      .getState()
+      .setMaxSweetSpots('zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz', 20);
+    expect(useDeeperMapsStore.getState().scans).toEqual({});
+  });
+
   it('setBaseLayer updates the global store value and persists it to localStorage', () => {
     expect(useDeeperMapsStore.getState().baseLayer).toBe('osm');
 

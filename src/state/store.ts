@@ -9,7 +9,13 @@ import {
   saveScan,
   saveScanResults,
 } from '../storage/scans';
-import type { BaseLayerId, LayerVisibility, PersistedFileMeta, StoredScan } from '../storage/types';
+import {
+  DEFAULT_MAX_SWEET_SPOTS,
+  type BaseLayerId,
+  type LayerVisibility,
+  type PersistedFileMeta,
+  type StoredScan,
+} from '../storage/types';
 import { CURRENT_BUNDLE_VERSION, type LayerBundle, type PipelineOptions } from '../analysis/types';
 import {
   buildQuestZip,
@@ -100,6 +106,13 @@ export interface DeeperMapsState {
     layer: keyof LayerVisibility,
     visible: boolean,
   ) => Promise<void>;
+  /**
+   * Set the per-scan cap on how many sweet-spot markers are shown at once.
+   * A pure display setting — persisted like layer visibility, no worker
+   * recompute (the full sweet-spot set is unchanged; only how many the map
+   * renders changes, filtered best-first to the current viewport).
+   */
+  setMaxSweetSpots: (scanId: string, max: number) => Promise<void>;
   setBaseLayer: (base: BaseLayerId) => void;
   renameScan: (scanId: string, name: string) => Promise<void>;
   deleteScan: (scanId: string) => Promise<void>;
@@ -341,7 +354,11 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       const list = await dbListScans();
       const byId: Record<string, StoredScan> = {};
       for (const s of list) {
-        byId[s.id] = { ...s, layerVisibility: normaliseLayerVisibility(s.layerVisibility) };
+        byId[s.id] = {
+          ...s,
+          layerVisibility: normaliseLayerVisibility(s.layerVisibility),
+          maxSweetSpots: s.maxSweetSpots ?? DEFAULT_MAX_SWEET_SPOTS,
+        };
       }
       set({ scans: byId });
     },
@@ -468,6 +485,17 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       };
       set((s) => ({ scans: { ...s.scans, [scanId]: updated } }));
       // TODO(spec §8.3): handle QuotaExceededError on this IDB write.
+      await persistScan(updated);
+    },
+
+    async setMaxSweetSpots(scanId, max) {
+      const scan = get().scans[scanId];
+      if (!scan) return;
+      // Clamp to a sane floor; the UI slider enforces a range but guard anyway.
+      const next = Math.max(1, Math.round(max));
+      if (scan.maxSweetSpots === next) return;
+      const updated: StoredScan = { ...scan, maxSweetSpots: next, updatedAt: Date.now() };
+      set((s) => ({ scans: { ...s.scans, [scanId]: updated } }));
       await persistScan(updated);
     },
 
