@@ -14,8 +14,9 @@ import type { FeatureCollection } from 'geojson';
  *   4 — replace weedLines with bathymetryLines for line-style bathymetry-over-weed rendering.
  *   5 — adds quantile-based `levels` to LayerScales for non-linear colour mapping.
  *   6 — adds `temperature` field + `tempStats` (commit 99c17f8).
+ *   7 — adds `spots` field (per-cell points for the click-to-inspect popup).
  */
-export const CURRENT_BUNDLE_VERSION = 6;
+export const CURRENT_BUNDLE_VERSION = 7;
 
 export interface LiftoutOptions {
   hardThresholdM: number;
@@ -127,6 +128,14 @@ export interface CellRow {
   fish_rate: number;
   bottom_hardness: number;
   mean_temp_c?: number;
+  /**
+   * Timestamp range (epoch ms) of the pings aggregated into this cell — the
+   * earliest and latest the boat was over this spot. Drives the "scanned at"
+   * line in the click-to-inspect popup; a merged multi-visit cell spans days.
+   * Optional for backward compatibility with cell fixtures predating this.
+   */
+  t_start_ms?: number;
+  t_end_ms?: number;
 }
 
 export interface Cells {
@@ -185,6 +194,14 @@ export interface LayerBundle {
   bathymetryLines: FeatureCollection;
   fishDensity: FeatureCollection;
   sweetSpots: FeatureCollection;
+  /**
+   * One Point per aggregated cell carrying that spot's stats (depth, weed,
+   * fish-rate, temperature, ping count, scan-time range). Drives the
+   * click-to-inspect popup — the map finds the nearest of these to a tap.
+   * Optional for backward compatibility with bundles cached before v7; the
+   * version bump forces a re-analyse so it populates.
+   */
+  spots?: FeatureCollection;
   /**
    * Filled MultiPolygon contours over `mean_temp_c`. Empty when the scan
    * has no cells with temperature data.

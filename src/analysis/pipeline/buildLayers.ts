@@ -349,6 +349,46 @@ function computeBounds(clean: CleanBath): LayerBundle['bounds'] {
   return { sw: [minLon, minLat], ne: [maxLon, maxLat] };
 }
 
+interface SpotProps {
+  category: ScanCategory;
+  depth_m: number;
+  mean_weed: number;
+  fish_rate: number;
+  bottom_hardness: number;
+  n_pings: number;
+  temp_c?: number;
+  t_start_ms?: number;
+  t_end_ms?: number;
+}
+
+/**
+ * One Point per aggregated cell, carrying that spot's full stats. Unlike
+ * `sweetSpots` (only categorised cells) this includes every scanned cell, so
+ * the click-to-inspect popup can report on anywhere the boat surveyed — not
+ * just the highlighted sweet spots.
+ */
+function buildSpots(cells: CategorisedCells): FeatureCollection {
+  const features: Feature<Point, SpotProps>[] = cells.rows.map((c) => {
+    const props: SpotProps = {
+      category: c.category,
+      depth_m: c.mean_depth,
+      mean_weed: c.mean_weed,
+      fish_rate: c.fish_rate,
+      bottom_hardness: c.bottom_hardness,
+      n_pings: c.n_pings,
+    };
+    if (c.mean_temp_c !== undefined) props.temp_c = c.mean_temp_c;
+    if (c.t_start_ms !== undefined) props.t_start_ms = c.t_start_ms;
+    if (c.t_end_ms !== undefined) props.t_end_ms = c.t_end_ms;
+    return {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+      properties: props,
+    };
+  });
+  return { type: 'FeatureCollection', features };
+}
+
 function buildSweetSpots(cells: CategorisedCells): FeatureCollection {
   const features: Feature<Point, SweetSpotProps>[] = [];
   for (const c of cells.rows) {
@@ -395,6 +435,7 @@ export function buildLayers(
     bathymetryLines,
     fishDensity: buildFishDensity(cells),
     sweetSpots: buildSweetSpots(cells),
+    spots: buildSpots(cells),
     temperature: buildTemperatureContours(cells, scales.temperature),
     scales,
     bounds: computeBounds(clean),

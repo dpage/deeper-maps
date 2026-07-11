@@ -201,6 +201,58 @@ describe('buildLayers — sweet spot markers', () => {
       .sort();
     expect(cats).toEqual(['gold', 'weeded']);
   });
+
+  it('produces one spot per cell (including uncategorised) carrying its stats', () => {
+    const cells: CategorisedCells = {
+      cellSizeM: 2,
+      origin: { lat: 51.7, lon: -1.43 },
+      rows: [
+        {
+          cx: 0,
+          cy: 0,
+          lat: 51.7,
+          lon: -1.43,
+          n_pings: 5,
+          mean_depth: 2.5,
+          mean_weed: 0.1,
+          fish_rate: 0.4,
+          bottom_hardness: 1000,
+          mean_temp_c: 18.3,
+          t_start_ms: 1000,
+          t_end_ms: 2000,
+          category: 'gold',
+        },
+        {
+          cx: 4,
+          cy: 0,
+          lat: 51.7002,
+          lon: -1.43,
+          n_pings: 10,
+          mean_depth: 3.0,
+          mean_weed: 0,
+          fish_rate: 0.02,
+          bottom_hardness: 900,
+          category: 'none',
+        },
+      ],
+    };
+    const lb = buildLayers(emptyClean, cells, DEFAULT_COLOR_SCALE_OPTIONS);
+    // Every cell becomes a spot — not only the categorised ones.
+    expect(lb.spots?.features).toHaveLength(2);
+    const gold = lb.spots?.features.find((f) => f.properties?.category === 'gold');
+    expect(gold?.properties).toMatchObject({
+      depth_m: 2.5,
+      mean_weed: 0.1,
+      fish_rate: 0.4,
+      n_pings: 5,
+      temp_c: 18.3,
+      t_start_ms: 1000,
+      t_end_ms: 2000,
+    });
+    // A cell without temperature omits temp_c rather than carrying undefined.
+    const plain = lb.spots?.features.find((f) => f.properties?.category === 'none');
+    expect(plain?.properties && 'temp_c' in plain.properties).toBe(false);
+  });
 });
 
 describe('buildLayers — bathymetry line contours', () => {

@@ -188,6 +188,69 @@ describe('<MapView/>', () => {
     expect(mock.__fitBoundsCalls.length).toBe(0);
   });
 
+  it('click-to-inspect: opens a spot popup, replaces it on another in-scan tap, and closes it on a tap outside', async () => {
+    const mock = await import('./__mocks__/maplibre-gl');
+    mock.__resetAll();
+
+    const scan = makeScan('44444444-4444-4444-4444-444444444444');
+    const bundle = bundleWith(null);
+    bundle.spots = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [-1.43, 51.7] },
+          properties: {
+            depth_m: 2.5,
+            mean_weed: 0.1,
+            fish_rate: 0.4,
+            n_pings: 6,
+            temp_c: 18.2,
+            t_start_ms: 1000,
+            t_end_ms: 1000,
+            category: 'gold',
+          },
+        },
+        {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [-1.4, 51.75] },
+          properties: { depth_m: 5.1, mean_weed: 0, fish_rate: 0, n_pings: 9, category: 'none' },
+        },
+      ],
+    };
+    useDeeperMapsStore.setState({
+      scans: { [scan.id]: scan },
+      activeScanId: scan.id,
+      layerBundle: bundle,
+    });
+
+    render(<MapView />);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+    });
+
+    // Tap essentially on the first spot → a popup opens with that spot's info,
+    // anchored at the spot's coordinates.
+    mock.__fireClick(-1.43, 51.7, 400, 400);
+    expect(mock.__popups).toHaveLength(1);
+    expect(mock.__popups[0]?.html).toContain('Depth');
+    expect(mock.__popups[0]?.html).toContain('2.5 m');
+    expect(mock.__popups[0]?.html).toContain('18.2 °C');
+    expect(mock.__popups[0]?.lngLat).toEqual([-1.43, 51.7]);
+
+    // Tap on the second spot → the first popup is removed and a new one opens.
+    mock.__fireClick(-1.4, 51.75, 400, 400);
+    expect(mock.__popups).toHaveLength(2);
+    expect(mock.__popups[0]?.removed).toBe(true);
+    expect(mock.__popups[1]?.html).toContain('5.1 m');
+
+    // Tap far from any spot (kilometres away, well outside the scan) → the popup
+    // closes and no new one opens.
+    mock.__fireClick(-1.1, 51.4, 400, 400);
+    expect(mock.__popups).toHaveLength(2);
+    expect(mock.__popups[1]?.removed).toBe(true);
+  });
+
   it('switching baseLayer calls setStyle (preserving pan/zoom) instead of tearing down the map', async () => {
     const mock = await import('./__mocks__/maplibre-gl');
     mock.__resetAll();

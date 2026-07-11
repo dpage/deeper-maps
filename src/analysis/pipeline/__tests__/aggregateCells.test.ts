@@ -44,6 +44,17 @@ describe('aggregateCells', () => {
     expect(cells.rows[0]?.fish_rate).toBeCloseTo(0.3);
   });
 
+  it('records the ping timestamp range (t_start_ms / t_end_ms) for each cell', () => {
+    const rows: PerPingRow[] = [
+      { ...ping(51.7, -1.43), ts_ms: 5000 },
+      { ...ping(51.7, -1.43), ts_ms: 1000 },
+      { ...ping(51.7, -1.43), ts_ms: 9000 },
+    ];
+    const cells = aggregateCells({ rows }, DEFAULT_CELL_OPTIONS);
+    expect(cells.rows[0]?.t_start_ms).toBe(1000);
+    expect(cells.rows[0]?.t_end_ms).toBe(9000);
+  });
+
   it('throws when number of cells exceeds the safety guard', () => {
     const rows: PerPingRow[] = [];
     // 100 001 distinct points at 1 m spacing → > 100 000 cells at cellSize 0.01 m.

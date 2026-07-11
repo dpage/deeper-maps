@@ -42,6 +42,20 @@ import {
   buildWeedColorExpression,
   buildWeedStyle,
 } from './layers/weed';
+import {
+  findNearestSpot,
+  formatSpotPopupHtml,
+  spotDistanceMeters,
+  type SpotProperties,
+} from './spotInfo';
+
+// A tap counts as "on the scan" when the nearest measured cell is within this
+// many cell-widths (in real-world metres, so it's zoom-independent). Beyond it
+// the tap is treated as outside the scanned area and closes any open popup.
+// Cell-relative so coarse-cell scans stay tappable between passes; floored so
+// fine-cell scans keep a comfortable tolerance.
+const SPOT_HIT_CELLS = 4;
+const SPOT_HIT_FLOOR_M = 15;
 
 // `maxzoom` on the raster source caps the highest zoom level at which MapLibre
 // will request tiles. Beyond it, MapLibre re-uses (overzooms) the highest
@@ -183,6 +197,15 @@ export function MapView(): JSX.Element {
   // `applySweetSpots`); we keep the complete set here so pans/zooms and
   // limit changes can re-derive that subset without a worker round-trip.
   const allSweetSpotsRef = useRef<GeoJSON.FeatureCollection | null>(null);
+  // Per-cell "spot" points for the click-to-inspect popup, and the currently
+  // open popup (if any). Kept in refs so the long-lived map click handler reads
+  // the latest set without re-subscribing.
+  const spotsRef = useRef<GeoJSON.Feature<GeoJSON.Point>[]>([]);
+  const popupRef = useRef<maplibregl.Popup | null>(null);
+  const closeSpotPopup = (): void => {
+    popupRef.current?.remove();
+    popupRef.current = null;
+  };
   const layerBundle = useDeeperMapsStore((s) => s.layerBundle);
   const activeScanId = useDeeperMapsStore((s) => s.activeScanId);
   const scans = useDeeperMapsStore((s) => s.scans);
@@ -199,6 +222,9 @@ export function MapView(): JSX.Element {
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
   useEffect(() => {
     lastFramedScanIdRef.current = null;
+    // A popup from the previous scan would point at a stale location once a new
+    // scan loads; dismiss it on any (re)selection.
+    closeSpotPopup();
   }, [frameRequestSeq]);
   /* c8 ignore stop */
 
@@ -222,6 +248,42 @@ export function MapView(): JSX.Element {
       limit,
     );
     (map.getSource(SWEET_SPOTS_SOURCE_ID) as unknown as SetDataSrc | null)?.setData(top);
+  };
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  /**
+   * Handle a tap on the map: open an info popup for the nearest scanned cell
+   * within the hit threshold, replacing any popup already open. A tap that
+   * lands outside the scan area (no cell within threshold) just closes the
+   * current popup. The nearest-cell search is a pure helper; here we only
+   * convert the winner to screen space to apply the pixel threshold.
+   */
+  const handleMapClick = (map: MapLibreMap, e: maplibregl.MapMouseEvent): void => {
+    const spots = spotsRef.current;
+    const nearest = spots.length > 0 ? findNearestSpot(spots, e.lngLat.lng, e.lngLat.lat) : null;
+    if (!nearest) {
+      closeSpotPopup();
+      return;
+    }
+    const snapshot = useDeeperMapsStore.getState();
+    const scan = snapshot.activeScanId ? snapshot.scans[snapshot.activeScanId] : undefined;
+    const cellSizeM = scan?.thresholds.cell.cellSizeM ?? 2;
+    const thresholdM = Math.max(cellSizeM * SPOT_HIT_CELLS, SPOT_HIT_FLOOR_M);
+    if (spotDistanceMeters(nearest, e.lngLat.lng, e.lngLat.lat) > thresholdM) {
+      closeSpotPopup();
+      return;
+    }
+    const [lon, lat] = nearest.geometry.coordinates as [number, number];
+    closeSpotPopup();
+    popupRef.current = new maplibregl.Popup({
+      closeButton: true,
+      closeOnClick: false,
+      maxWidth: '260px',
+    })
+      .setLngLat([lon, lat])
+      .setHTML(formatSpotPopupHtml(nearest.properties as unknown as SpotProperties))
+      .addTo(map);
   };
   /* c8 ignore stop */
 
@@ -282,6 +344,7 @@ export function MapView(): JSX.Element {
       );
       allSweetSpotsRef.current = initialBundle.sweetSpots;
       applySweetSpots(map);
+      spotsRef.current = (initialBundle.spots?.features ?? []) as GeoJSON.Feature<GeoJSON.Point>[];
       applyColorExpressions(map, initialBundle);
     }
     const initialScanId = snapshot.activeScanId;
@@ -324,7 +387,10 @@ export function MapView(): JSX.Element {
     // finishes panning/zooming. Registered once; the handler reads all inputs
     // fresh so it never goes stale. `map.remove()` tears the listener down.
     map.on('moveend', () => applySweetSpots(map));
+    // Click-to-inspect: open/replace/close the spot info popup.
+    map.on('click', (e) => handleMapClick(map, e));
     return () => {
+      closeSpotPopup();
       map.remove();
       mapRef.current = null;
     };
@@ -380,6 +446,7 @@ export function MapView(): JSX.Element {
       );
       allSweetSpotsRef.current = layerBundle.sweetSpots;
       applySweetSpots(map);
+      spotsRef.current = (layerBundle.spots?.features ?? []) as GeoJSON.Feature<GeoJSON.Point>[];
       applyColorExpressions(map, layerBundle);
       if (layerBundle.bounds && activeScanId && activeScanId !== lastFramedScanIdRef.current) {
         map.fitBounds([layerBundle.bounds.sw, layerBundle.bounds.ne], {

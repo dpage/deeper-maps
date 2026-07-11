@@ -77,6 +77,22 @@ export function __resetSetLayoutPropertyCalls(): void {
 export function __resetSetPaintPropertyCalls(): void {
   __setPaintPropertyCalls.length = 0;
 }
+/**
+ * Captured `map.on('click', cb)` handlers, so click-to-inspect tests can drive
+ * a synthetic tap via `__fireClick`. Reset via `__resetClickHandlers()`.
+ */
+export interface MockMapMouseEvent {
+  lngLat: { lng: number; lat: number };
+  point: { x: number; y: number };
+}
+export const __clickHandlers: Array<(e: MockMapMouseEvent) => void> = [];
+export function __resetClickHandlers(): void {
+  __clickHandlers.length = 0;
+}
+export function __fireClick(lng: number, lat: number, x: number, y: number): void {
+  for (const h of [...__clickHandlers]) h({ lngLat: { lng, lat }, point: { x, y } });
+}
+
 export function __resetAll(): void {
   __resetSetDataCalls();
   __resetAddImageCalls();
@@ -85,6 +101,8 @@ export function __resetAll(): void {
   __resetSetStyleCalls();
   __resetSetLayoutPropertyCalls();
   __resetSetPaintPropertyCalls();
+  __resetClickHandlers();
+  __resetPopups();
   __isStyleLoadedReturn = true;
   __deferStyleLoadCallbacks = false;
   __pendingStyleLoadCallbacks.length = 0;
@@ -135,6 +153,7 @@ class MockMap {
       if (__isStyleLoadedReturn && !__deferStyleLoadCallbacks) setTimeout(cb, 0);
       else __pendingStyleLoadCallbacks.push(cb);
     }
+    if (event === 'click') __clickHandlers.push(cb);
     return this;
   });
   once = vi.fn((event: string, cb: () => void) => {
@@ -179,6 +198,7 @@ class MockMap {
     getEast: () => 180,
     getNorth: () => 90,
   }));
+  project = vi.fn((_lngLat: [number, number]) => ({ x: 0, y: 0 }));
   remove = vi.fn();
   resize = vi.fn();
   setCenter = vi.fn();
@@ -190,9 +210,47 @@ class MockMap {
   );
 }
 
+/**
+ * Records every popup opened via `new Popup(...).setLngLat().setHTML().addTo()`
+ * so click-to-inspect tests can assert what was shown and where. Reset via
+ * `__resetPopups()`.
+ */
+export const __popups: {
+  lngLat: [number, number] | null;
+  html: string | null;
+  removed: boolean;
+}[] = [];
+export function __resetPopups(): void {
+  __popups.length = 0;
+}
+
+export class Popup {
+  private record: { lngLat: [number, number] | null; html: string | null; removed: boolean } = {
+    lngLat: null,
+    html: null,
+    removed: false,
+  };
+  constructor(_opts?: Record<string, unknown>) {
+    __popups.push(this.record);
+  }
+  setLngLat = vi.fn((lngLat: [number, number]) => {
+    this.record.lngLat = lngLat;
+    return this;
+  });
+  setHTML = vi.fn((html: string) => {
+    this.record.html = html;
+    return this;
+  });
+  addTo = vi.fn(() => this);
+  remove = vi.fn(() => {
+    this.record.removed = true;
+    return this;
+  });
+}
+
 export class Map extends MockMap {}
 export const NavigationControl = vi.fn();
 export class AttributionControl {
   constructor() {}
 }
-export default { Map, NavigationControl, AttributionControl };
+export default { Map, NavigationControl, AttributionControl, Popup };

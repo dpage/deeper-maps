@@ -32,6 +32,8 @@ export function aggregateCells(perPing: PerPing, opts: CellOptions): Cells {
     nTemp: number;
     sumLat: number;
     sumLon: number;
+    tStart: number;
+    tEnd: number;
   }
   const cellsMap = new Map<string, Acc>();
 
@@ -55,6 +57,8 @@ export function aggregateCells(perPing: PerPing, opts: CellOptions): Cells {
         nTemp: 0,
         sumLat: 0,
         sumLon: 0,
+        tStart: Infinity,
+        tEnd: -Infinity,
       };
       cellsMap.set(key, acc);
       if (cellsMap.size > MAX_CELLS) {
@@ -72,6 +76,8 @@ export function aggregateCells(perPing: PerPing, opts: CellOptions): Cells {
     }
     acc.sumLat += r.lat;
     acc.sumLon += r.lon;
+    if (r.ts_ms < acc.tStart) acc.tStart = r.ts_ms;
+    if (r.ts_ms > acc.tEnd) acc.tEnd = r.ts_ms;
   }
 
   const out: CellRow[] = [];
@@ -87,6 +93,8 @@ export function aggregateCells(perPing: PerPing, opts: CellOptions): Cells {
       mean_weed: acc.sumWeed / acc.n_pings,
       fish_rate: acc.n_fish_pings / acc.n_pings,
       bottom_hardness: acc.sumHardness / acc.n_pings,
+      t_start_ms: acc.tStart,
+      t_end_ms: acc.tEnd,
     };
     if (acc.nTemp > 0) cell.mean_temp_c = acc.sumTemp / acc.nTemp;
     out.push(cell);
