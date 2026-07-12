@@ -73,6 +73,7 @@ beforeEach(async () => {
     layerBundle: null,
     progress: null,
     warnings: [],
+    viewMode: '2d',
   });
 });
 
@@ -139,5 +140,17 @@ describe('<LayerControls/>', () => {
     render(<LayerControls scan={{ ...SCAN, hasSonar: true }} />);
     expect(screen.getByLabelText('Sweet spots')).toBeEnabled();
     expect(screen.queryByText(/need sonar data/i)).toBeNull();
+  });
+
+  it('disables every layer toggle in the 3D view', () => {
+    useDeeperMapsStore.setState({
+      viewMode: '3d',
+      layerBundle: makeBundle({ tempStats: { min: 12, mean: 14, max: 16 } }),
+    });
+    render(<LayerControls scan={{ ...SCAN, hasSonar: true }} />);
+    for (const label of ['Bathymetry', 'Weed', 'Fish density', 'Sweet spots', 'Temperature']) {
+      expect(screen.getByLabelText(new RegExp(`^${label}$`, 'i'))).toBeDisabled();
+    }
+    expect(screen.getByText(/apply to the 2D map view/i)).toBeInTheDocument();
   });
 });

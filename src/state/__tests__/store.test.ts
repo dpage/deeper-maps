@@ -503,8 +503,9 @@ describe('useDeeperMapsStore', () => {
     useDeeperMapsStore.getState().setViewPitch(200);
     expect(useDeeperMapsStore.getState().viewPitch).toBe(80);
 
+    // Floor is 20° (not 0) — near-flat 3D clips the relief.
     useDeeperMapsStore.getState().setViewPitch(-10);
-    expect(useDeeperMapsStore.getState().viewPitch).toBe(0);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(20);
 
     useDeeperMapsStore.getState().setViewPitch(Number.NaN);
     expect(useDeeperMapsStore.getState().viewPitch).toBe(55);

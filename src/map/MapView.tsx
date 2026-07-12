@@ -2,7 +2,7 @@ import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef } from 'react';
 import type { LayerBundle } from '../analysis/types';
-import { useDeeperMapsStore } from '../state/store';
+import { MIN_VIEW_PITCH, useDeeperMapsStore } from '../state/store';
 import { DEFAULT_MAX_SWEET_SPOTS, type BaseLayerId, type LayerVisibility } from '../storage/types';
 import { buildFishIcon } from './fishIcon';
 import {
@@ -633,9 +633,16 @@ export function MapView(): JSX.Element {
     const apply = (): void => {
       syncView(map);
       if (lastPitchModeRef.current !== viewMode) {
-        // Entering 3D tilts to the current slider pitch; leaving levels the map.
-        const nextPitch = viewMode === '3d' ? useDeeperMapsStore.getState().viewPitch : 0;
-        map.easeTo({ pitch: nextPitch, duration: 600 });
+        if (viewMode === '3d') {
+          // Enforce the tilt floor so a two-finger drag can't reach the flat
+          // angles where the relief clips, then tilt to the slider pitch.
+          map.setMinPitch(MIN_VIEW_PITCH);
+          map.easeTo({ pitch: useDeeperMapsStore.getState().viewPitch, duration: 600 });
+        } else {
+          // Drop the floor first so the map can lie flat again for 2D.
+          map.setMinPitch(0);
+          map.easeTo({ pitch: 0, duration: 600 });
+        }
         lastPitchModeRef.current = viewMode;
       }
     };

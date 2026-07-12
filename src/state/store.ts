@@ -89,8 +89,13 @@ export const MIN_VERTICAL_EXAGGERATION = 1;
 export const MAX_VERTICAL_EXAGGERATION = 20;
 export const DEFAULT_VERTICAL_EXAGGERATION = 6;
 
-/** Clamp range + default for the 3D camera tilt (degrees). */
-export const MIN_VIEW_PITCH = 0;
+/**
+ * Clamp range + default for the 3D camera tilt (degrees). The floor is 20°, not
+ * 0°: closer to flat, MapLibre tightens the view frustum around the ground plane
+ * and starts clipping the exaggerated relief (parts of the surface vanish), and
+ * a near-top-down 3D view is barely distinguishable from the 2D map anyway.
+ */
+export const MIN_VIEW_PITCH = 20;
 export const MAX_VIEW_PITCH = 80;
 export const DEFAULT_VIEW_PITCH = 55;
 

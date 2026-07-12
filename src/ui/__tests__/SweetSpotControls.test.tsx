@@ -48,6 +48,7 @@ beforeEach(async () => {
     removeEventListener: vi.fn(),
     terminate: vi.fn(),
   } as unknown as Worker;
+  useDeeperMapsStore.setState({ viewMode: '2d' });
 });
 
 afterEach(async () => {
@@ -70,6 +71,13 @@ describe('<SweetSpotControls/>', () => {
     render(<SweetSpotControls scan={{ ...makeScan(12), hasSonar: false }} />);
     expect(screen.getByRole('slider', { name: /max sweet spots shown/i })).toBeDisabled();
     expect(screen.getByText(/not available/i)).toBeInTheDocument();
+  });
+
+  it('disables the slider in the 3D view and points to the 2D map', () => {
+    useDeeperMapsStore.setState({ viewMode: '3d' });
+    render(<SweetSpotControls scan={makeScan(12)} />);
+    expect(screen.getByRole('slider', { name: /max sweet spots shown/i })).toBeDisabled();
+    expect(screen.getByText(/2D map view/i)).toBeInTheDocument();
   });
 
   it('invokes setMaxSweetSpots when the slider value changes', () => {

@@ -77,6 +77,9 @@ describe('<LakeBed3DControls/>', () => {
       layerBundle: bundle(DEPTH_GRID),
     });
     render(<LakeBed3DControls />);
+    // Depth colour key (with the scan's depth range) lives in this panel now.
+    expect(screen.getByText(/^Depth$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/depth colour key/i)).toBeInTheDocument();
     expect(screen.getByText(/Vertical exaggeration ×8/i)).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: /vertical exaggeration/i })).toBeInTheDocument();
     expect(screen.getByText(/Tilt 55°/i)).toBeInTheDocument();

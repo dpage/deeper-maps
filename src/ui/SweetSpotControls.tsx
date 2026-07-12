@@ -16,9 +16,13 @@ export interface SweetSpotControlsProps {
  */
 export function SweetSpotControls({ scan }: SweetSpotControlsProps): JSX.Element {
   const setMaxSweetSpots = useDeeperMapsStore((s) => s.setMaxSweetSpots);
+  const viewMode = useDeeperMapsStore((s) => s.viewMode);
   const value = scan.maxSweetSpots ?? DEFAULT_MAX_SWEET_SPOTS;
-  // Sweet spots are sonar-derived; disable the control for depth-only scans.
-  const disabled = scan.hasSonar === false;
+  // Sweet spots are sonar-derived (unavailable on depth-only scans) and only
+  // shown in the 2D view — disable the control in either case.
+  const noSonar = scan.hasSonar === false;
+  const in3d = viewMode === '3d';
+  const disabled = noSonar || in3d;
 
   return (
     <Stack spacing={0.5}>
@@ -40,9 +44,11 @@ export function SweetSpotControls({ scan }: SweetSpotControlsProps): JSX.Element
         onChange={(_, v) => void setMaxSweetSpots(scan.id, v as number)}
       />
       <Typography variant="caption" color="text.secondary">
-        {disabled
-          ? 'Not available — this scan has no sonar data.'
-          : 'Shows the best spots in view.'}
+        {in3d
+          ? 'Shown in the 2D map view.'
+          : noSonar
+            ? 'Not available — this scan has no sonar data.'
+            : 'Shows the best spots in view.'}
       </Typography>
     </Stack>
   );

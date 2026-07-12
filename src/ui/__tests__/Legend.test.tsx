@@ -214,9 +214,7 @@ describe('<Legend/>', () => {
     expect(screen.getByText(/Temp:.*12\.4.*16\.7.*°C/)).toBeInTheDocument();
   });
 
-  it('in 3D mode shows only the depth ramp, even with other layers enabled', () => {
-    // SCAN has fishDensity + sweetSpots visible, but the 3D surface is depth-
-    // coloured only, so their legend rows must be suppressed.
+  it('renders nothing in 3D mode (the depth key lives in the 3D controls panel)', () => {
     useDeeperMapsStore.setState({
       viewMode: '3d',
       scans: { [SCAN.id]: SCAN },
@@ -240,10 +238,8 @@ describe('<Legend/>', () => {
       progress: null,
       warnings: [],
     });
-    render(<Legend />);
-    expect(screen.getByText(/depth/i)).toBeInTheDocument();
-    expect(screen.queryByText(/fish rate/i)).toBeNull();
-    expect(screen.queryByText(/sweet spots/i)).toBeNull();
+    const { container } = render(<Legend />);
+    expect(container.firstChild).toBeNull();
   });
 
   it('hides the temperature row when scan.layerVisibility.temperature is false', () => {
