@@ -35,6 +35,14 @@ void main() {
   // its true map footprint. altitude (metres) → mercator z via a_mpm.
   float z = a_mpm * (u_depthBase - a_depth) * u_exaggeration;
   gl_Position = u_matrix * vec4(a_pos, z, 1.0);
+  // Keep the vertex inside the clip volume's depth range. MapLibre tunes its
+  // near/far planes for flat map data; zoomed in, that range shrinks below our
+  // exaggerated relief's depth extent and triangles get clipped away entirely
+  // (the surface vanishes). Clamping clip-space z to just inside +/-w keeps
+  // every vertex un-clipped, so the mesh stays whole at any zoom. x, y and w
+  // are untouched, so the on-screen projection is exactly MapLibre's; only the
+  // depth ordering flattens for the rare geometry beyond the normal frustum.
+  gl_Position.z = clamp(gl_Position.z, -gl_Position.w * 0.999, gl_Position.w * 0.999);
   // Reconstruct the exaggerated surface normal from the slope so shading
   // tracks the exaggeration slider without re-uploading geometry.
   vec3 n = normalize(vec3(-a_slope.x * u_exaggeration, -a_slope.y * u_exaggeration, 1.0));
@@ -103,7 +111,7 @@ export class LakeBed3DLayer implements CustomLayerInterface {
   // surface breaks into flickering stripes.
   private refX = 0;
   private refY = 0;
-  // Shallowest depth in the current mesh; anchors the surface at z=0.
+  // Mid-depth of the current mesh; centres the relief on z=0.
   private depthBase = 0;
   // Scratch Float64 matrix reused each frame for the reference translation.
   private readonly matrix64 = new Float64Array(16);
