@@ -4,6 +4,7 @@ import {
   parseDeeperMobileBathymetry,
   parseQuestBathymetry,
   parseQuestSonar,
+  plausibleWaterTemp,
   type ParseDiagnostics,
 } from '../quest';
 
@@ -36,6 +37,23 @@ describe('parseQuestBathymetry', () => {
     });
     expect(diagnostics.malformedRowCount).toBe(0);
     expect(diagnostics.totalRows).toBe(4);
+  });
+
+  it('drops the 0.0 sentinel and out-of-water temperature spikes, keeps plausible readings', () => {
+    const csv = `51.7,-1.43,1.5,0.0,1717000000000
+51.7,-1.43,1.6,18.4,1717000000067
+51.7,-1.43,1.7,45.8,1717000000134
+51.7,-1.43,1.8,3.2,1717000000201
+`;
+    const diagnostics: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const rows = parseQuestBathymetry(enc(csv), diagnostics);
+    expect(rows).toHaveLength(4);
+    expect(rows[0]?.temp_c).toBeUndefined(); // 0.0 "no reading" sentinel
+    expect(rows[1]?.temp_c).toBe(18.4); // plausible reading kept
+    expect(rows[2]?.temp_c).toBeUndefined(); // 45.8 out-of-water spike
+    expect(rows[3]?.temp_c).toBe(3.2); // near-freezing water still kept
+    // The row itself survives even when its temperature is dropped.
+    expect(rows[0]?.depth_m).toBe(1.5);
   });
 
   it('parses the 4-column older format with temp_c absent', () => {
@@ -296,5 +314,28 @@ describe('parseDeeperMobileBathymetry', () => {
     expect(() => parseDeeperMobileBathymetry(enc(MOBILE_HEADER + '\n'), diag)).toThrow(
       /no rows found/i,
     );
+  });
+});
+
+describe('plausibleWaterTemp', () => {
+  it('rejects the 0.0 sentinel and negatives', () => {
+    expect(plausibleWaterTemp(0)).toBeUndefined();
+    expect(plausibleWaterTemp(-3.5)).toBeUndefined();
+  });
+
+  it('rejects out-of-water spikes above the freshwater ceiling', () => {
+    expect(plausibleWaterTemp(40.1)).toBeUndefined();
+    expect(plausibleWaterTemp(45.8)).toBeUndefined();
+  });
+
+  it('keeps plausible readings, including the boundary values', () => {
+    expect(plausibleWaterTemp(0.1)).toBe(0.1); // just above freezing
+    expect(plausibleWaterTemp(18.4)).toBe(18.4);
+    expect(plausibleWaterTemp(40)).toBe(40); // ceiling is inclusive
+  });
+
+  it('rejects non-finite values', () => {
+    expect(plausibleWaterTemp(Number.NaN)).toBeUndefined();
+    expect(plausibleWaterTemp(Number.POSITIVE_INFINITY)).toBeUndefined();
   });
 });

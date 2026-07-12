@@ -7,6 +7,24 @@ export interface ParseDiagnostics {
 }
 
 const MAX_MALFORMED_FRACTION = 0.01;
+
+/**
+ * Deeper's temperature channel is noisy at both ends. It reads `0.0` as a "no
+ * reading" sentinel (e.g. on GPS-only rows before the probe samples), and can
+ * emit wild highs when the sensor is lifted out of the water and bakes in the
+ * sun. Keep only physically plausible freshwater readings: strictly above 0 °C
+ * (so the sentinel is dropped, but genuine near-freezing water survives) and no
+ * warmer than a ceiling no fishing venue reaches — a hotter reading is the
+ * sensor in air, not water. Filtering here keeps both the temperature scale and
+ * the min/mean/max readout honest.
+ */
+const MAX_PLAUSIBLE_WATER_TEMP_C = 40;
+
+export function plausibleWaterTemp(value: number): number | undefined {
+  return Number.isFinite(value) && value > 0 && value <= MAX_PLAUSIBLE_WATER_TEMP_C
+    ? value
+    : undefined;
+}
 /**
  * The malformed-row threshold is only meaningful at scale — a real scan has
  * thousands of rows. Below this floor we skip the percentage check so a tiny
@@ -87,13 +105,12 @@ export function parseQuestBathymetry(bytes: Uint8Array, diagnostics: ParseDiagno
       return;
     }
     if (firstColCount === 5) {
-      out.push({
-        lat: nums[0]!,
-        lon: nums[1]!,
-        depth_m: nums[2]!,
-        temp_c: nums[3]!,
-        ts_ms: nums[4]!,
-      });
+      const row: BathRow = { lat: nums[0]!, lon: nums[1]!, depth_m: nums[2]!, ts_ms: nums[4]! };
+      // 0.0 is the "no reading" sentinel and out-of-water spikes are noise;
+      // keep only plausible freshwater readings (see plausibleWaterTemp).
+      const temp = plausibleWaterTemp(nums[3]!);
+      if (temp !== undefined) row.temp_c = temp;
+      out.push(row);
     } else {
       out.push({ lat: nums[0]!, lon: nums[1]!, depth_m: nums[2]!, ts_ms: nums[3]! });
     }
@@ -216,11 +233,12 @@ export function parseDeeperMobileBathymetry(
       return;
     }
     const row: BathRow = { lat, lon, depth_m: depth, ts_ms: ts };
-    // Temperature 0.0 is the "no reading" sentinel; keep only real readings.
+    // Keep only plausible freshwater readings — drops the 0.0 "no reading"
+    // sentinel and out-of-water spikes alike (see plausibleWaterTemp).
     const tempStr = cols[3]!.trim();
     if (tempStr !== '') {
-      const temp = Number(tempStr);
-      if (Number.isFinite(temp) && temp !== 0) row.temp_c = temp;
+      const temp = plausibleWaterTemp(Number(tempStr));
+      if (temp !== undefined) row.temp_c = temp;
     }
     out.push(row);
     if (lat !== 0 || lon !== 0) hasGps = true;

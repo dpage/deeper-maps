@@ -23,8 +23,11 @@ import type { FeatureCollection } from 'geojson';
  *       drives the 3D view). Previously the IDW grid was discarded after
  *       contouring; now it is carried through so the 3D renderer can build a
  *       mesh without a worker round-trip.
+ *  10 — no bundle shape change; bumped to force a re-analyse so Quest scans
+ *       re-parse temperature through the new plausibility filter (drops the
+ *       0.0 "no reading" sentinel and out-of-water spikes from the stats/scale).
  */
-export const CURRENT_BUNDLE_VERSION = 9;
+export const CURRENT_BUNDLE_VERSION = 10;
 
 export interface LiftoutOptions {
   hardThresholdM: number;
