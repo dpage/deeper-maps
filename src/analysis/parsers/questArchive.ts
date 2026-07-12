@@ -1,5 +1,7 @@
 import { zipSync } from 'fflate';
 import { expandZips, type UploadFile } from './zip';
+import { looksLikeDeeperMobile, parseDeeperMobileBathymetry, type ParseDiagnostics } from './quest';
+import type { BathRow } from './types';
 
 /**
  * A single uploaded file's name + bytes — a zip, a Mac-zipped export, or one
@@ -20,18 +22,53 @@ export interface QuestCsvs {
 }
 
 /**
- * Pull the raw `bathymetry.csv` (+ optional `sonar.csv`) bytes out of an upload
- * — a zip, a Mac-zipped export, or a bare pair of CSVs — WITHOUT parsing them
- * into rows. Uses the same `expandZips` decompression + resource-fork filtering
- * as {@link parseQuestUpload}, so `__MACOSX/` junk and AppleDouble `._` sidecars
+ * Serialise bathymetry rows to the internal `bathymetry.csv` format (headerless,
+ * `lat,lon,depth,temp,ts` when temperature is present, `lat,lon,depth,ts`
+ * otherwise). Missing temperature is forward-filled from the last known reading
+ * so the output is a uniform-width CSV that the Quest parser reads back with
+ * real temperatures — rather than re-introducing the mobile export's `0.0`
+ * "no reading" sentinel. Used to normalise a Deeper mobile scan into the same
+ * shape as a Quest export so the two can be merged and re-shared.
+ */
+export function serialiseBathymetry(rows: readonly BathRow[]): Uint8Array {
+  const hasTemp = rows.some((r) => r.temp_c !== undefined);
+  const firstTemp = rows.find((r) => r.temp_c !== undefined)?.temp_c ?? 0;
+  let lastTemp = firstTemp;
+  const lines: string[] = [];
+  for (const r of rows) {
+    if (hasTemp) {
+      if (r.temp_c !== undefined) lastTemp = r.temp_c;
+      lines.push(`${r.lat},${r.lon},${r.depth_m},${lastTemp},${r.ts_ms}`);
+    } else {
+      lines.push(`${r.lat},${r.lon},${r.depth_m},${r.ts_ms}`);
+    }
+  }
+  return new TextEncoder().encode(lines.join('\n') + '\n');
+}
+
+/**
+ * Pull the `bathymetry.csv` (+ optional `sonar.csv`) bytes out of an upload — a
+ * zip, a Mac-zipped export, or a bare CSV — in the internal Quest format. Uses
+ * the same `expandZips` decompression + resource-fork filtering as
+ * {@link parseQuestUpload}, so `__MACOSX/` junk and AppleDouble `._` sidecars
  * are discarded before they can shadow the real files.
  *
- * Byte-level (rather than row-level) extraction is what lets merge and export
- * be lossless: the exact CSV text the device wrote is preserved and re-emitted,
- * so a round-trip through export → import reproduces the original scan.
+ * A Quest scan's CSV bytes pass through untouched, so an export → import
+ * round-trip reproduces it exactly. A Deeper mobile `scan_data.csv` (headered,
+ * sparse GPS, no sonar) is normalised via {@link serialiseBathymetry} into the
+ * same headerless bathymetry.csv shape, which is what lets a mobile scan be
+ * merged with — or exported alongside — Quest scans.
  */
 export function extractQuestCsvs(uploads: UploadFile[]): QuestCsvs {
   const expanded = expandZips(uploads);
+
+  const mobile = expanded.find((f) => looksLikeDeeperMobile(f.bytes));
+  if (mobile) {
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const rows = parseDeeperMobileBathymetry(mobile.bytes, diag);
+    return { bathymetry: serialiseBathymetry(rows), sonar: null };
+  }
+
   const bath = expanded.find((f) => f.fileName.toLowerCase() === 'bathymetry.csv');
   const sonar = expanded.find((f) => f.fileName.toLowerCase() === 'sonar.csv');
   if (!bath) {

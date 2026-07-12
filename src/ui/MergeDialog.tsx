@@ -68,15 +68,16 @@ export function MergeDialog({ scan, open, onClose }: MergeDialogProps): JSX.Elem
       <DialogContent dividers>
         <Stack spacing={2}>
           <DialogContentText>
-            Add another Quest export (.zip) of the same water. Its bathymetry and sonar data are
-            combined with this scan, then re-analysed as one.
+            Add another scan of the same water — a Quest export (.zip) or a Deeper mobile export
+            (.csv). Its data is combined with this scan and re-analysed as one, building a more
+            complete map.
           </DialogContentText>
           <Button variant="outlined" component="label" disabled={busy}>
             Choose file
             <input
               type="file"
               hidden
-              accept=".zip,application/zip"
+              accept=".zip,.csv,application/zip,text/csv"
               aria-label="merge upload"
               onChange={handleFileChange}
             />

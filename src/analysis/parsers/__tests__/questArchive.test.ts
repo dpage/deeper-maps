@@ -6,9 +6,11 @@ import {
   concatCsv,
   extractQuestCsvs,
   mergeQuestArchives,
+  serialiseBathymetry,
   type QuestCsvs,
 } from '../questArchive';
 import { parseQuestUpload } from '../zip';
+import type { BathRow } from '../types';
 
 const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
 
@@ -61,6 +63,54 @@ describe('extractQuestCsvs', () => {
     expect(() => extractQuestCsvs([{ fileName: 'scan.zip', bytes: zip }])).toThrow(
       /no bathymetry/i,
     );
+  });
+
+  it('normalises a Deeper mobile scan_data CSV to headerless bathymetry.csv', () => {
+    const mobile =
+      'latitude,longtitude,depth,temperature,time\n' +
+      '48.4820,3.9191,3.028,0.0,1783174168000\n' + // GPS row, temp sentinel
+      ',,3.070,30.6,1783174168684\n' + // blank GPS → 0,0; real temp
+      '48.4821,3.9192,3.049,0.0,1783174169000\n';
+    const csvs = extractQuestCsvs([{ fileName: 'scan_data_x.csv', bytes: enc(mobile) }]);
+    expect(csvs.sonar).toBeNull();
+    const text = strFromU8(csvs.bathymetry);
+    expect(text).not.toContain('latitude'); // header stripped
+    const rows = text.trim().split('\n');
+    expect(rows).toHaveLength(3);
+    // Blank GPS became 0,0; temp forward-filled (first real reading is 30.6).
+    expect(rows[0]).toBe('48.482,3.9191,3.028,30.6,1783174168000');
+    expect(rows[1]).toBe('0,0,3.07,30.6,1783174168684');
+  });
+});
+
+describe('serialiseBathymetry', () => {
+  const row = (lat: number, lon: number, depth: number, ts: number, temp?: number): BathRow => {
+    const r: BathRow = { lat, lon, depth_m: depth, ts_ms: ts };
+    if (temp !== undefined) r.temp_c = temp;
+    return r;
+  };
+
+  it('emits 5 columns and forward-fills missing temperature', () => {
+    const out = serialiseBathymetry([
+      row(51.7, -1.43, 1.5, 1000), // no temp yet → filled from first reading
+      row(51.7, -1.43, 1.6, 1100, 18.4),
+      row(51.7, -1.43, 1.7, 1200), // gap → carries 18.4
+      row(51.7, -1.43, 1.8, 1300, 18.9),
+    ]);
+    expect(strFromU8(out).trim().split('\n')).toEqual([
+      '51.7,-1.43,1.5,18.4,1000',
+      '51.7,-1.43,1.6,18.4,1100',
+      '51.7,-1.43,1.7,18.4,1200',
+      '51.7,-1.43,1.8,18.9,1300',
+    ]);
+  });
+
+  it('emits 4 columns when no row has temperature', () => {
+    const out = serialiseBathymetry([row(51.7, -1.43, 1.5, 1000), row(51.7, -1.43, 1.6, 1100)]);
+    expect(strFromU8(out).trim().split('\n')).toEqual([
+      '51.7,-1.43,1.5,1000',
+      '51.7,-1.43,1.6,1100',
+    ]);
   });
 });
 
@@ -163,5 +213,50 @@ describe('mergeQuestArchives', () => {
     const zip = buildQuestZip(merged);
     const result = await parseQuestUpload([{ fileName: 'merged.zip', bytes: zip }]);
     expect(result.scan.bathymetry).toHaveLength(60);
+  });
+});
+
+describe('cross-format export & merge', () => {
+  const mobileCsv = (base: number): Uint8Array => {
+    const lines = ['latitude,longtitude,depth,temperature,time'];
+    for (let i = 0; i < 20; i++) {
+      // Alternate GPS-fix (temp sentinel 0) and blank-GPS (real temp) rows.
+      if (i % 2 === 0) lines.push(`48.482,3.919,3.0,0.0,${base + i * 100}`);
+      else lines.push(`,,3.05,30.6,${base + i * 100}`);
+    }
+    return enc(lines.join('\n') + '\n');
+  };
+  const questCsvs = (base: number): QuestCsvs => ({
+    bathymetry: enc(
+      Array.from({ length: 20 }, (_, i) => `51.7,-1.43,1.5,18.4,${base + i * 100}`).join('\n') +
+        '\n',
+    ),
+    sonar: enc(
+      Array.from({ length: 20 }, (_, i) => `${base + i * 100},0,0,5,12,40,200,500`).join('\n') +
+        '\n',
+    ),
+  });
+
+  it('exports a mobile scan as a re-importable bathymetry-only zip', async () => {
+    const csvs = extractQuestCsvs([{ fileName: 'scan_data.csv', bytes: mobileCsv(1717000000000) }]);
+    const zip = buildQuestZip(csvs);
+    const result = await parseQuestUpload([{ fileName: 'export.zip', bytes: zip }]);
+    expect(result.scan.bathymetry).toHaveLength(20);
+    expect(result.scan.sonar).toHaveLength(0);
+    // Temperature survived the round-trip (forward-filled, no 0 sentinel).
+    expect(result.scan.bathymetry.every((b) => b.temp_c === 30.6)).toBe(true);
+  });
+
+  it('merges a mobile scan into a Quest scan, keeping the Quest sonar', async () => {
+    const quest = questCsvs(1717000000000);
+    const mobile = extractQuestCsvs([
+      { fileName: 'scan_data.csv', bytes: mobileCsv(1900000000000) },
+    ]);
+    const merged = mergeQuestArchives([quest, mobile]);
+    const zip = buildQuestZip(merged);
+    const result = await parseQuestUpload([{ fileName: 'merged.zip', bytes: zip }]);
+    // Combined bathymetry from both; sonar retained from the Quest scan.
+    expect(result.scan.bathymetry).toHaveLength(40);
+    expect(result.scan.sonar).toHaveLength(20);
   });
 });
