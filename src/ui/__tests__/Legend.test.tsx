@@ -45,6 +45,8 @@ beforeEach(async () => {
     removeEventListener: vi.fn(),
     terminate: vi.fn(),
   } as unknown as Worker;
+  // Every test starts in 2D unless it opts into 3D, independent of run order.
+  useDeeperMapsStore.setState({ viewMode: '2d' });
 });
 
 afterEach(async () => {
@@ -210,6 +212,38 @@ describe('<Legend/>', () => {
     });
     render(<Legend />);
     expect(screen.getByText(/Temp:.*12\.4.*16\.7.*°C/)).toBeInTheDocument();
+  });
+
+  it('in 3D mode shows only the depth ramp, even with other layers enabled', () => {
+    // SCAN has fishDensity + sweetSpots visible, but the 3D surface is depth-
+    // coloured only, so their legend rows must be suppressed.
+    useDeeperMapsStore.setState({
+      viewMode: '3d',
+      scans: { [SCAN.id]: SCAN },
+      activeScanId: SCAN.id,
+      layerBundle: {
+        bathymetry: { type: 'FeatureCollection', features: [] },
+        weed: { type: 'FeatureCollection', features: [] },
+        bathymetryLines: { type: 'FeatureCollection', features: [] },
+        fishDensity: { type: 'FeatureCollection', features: [] },
+        sweetSpots: { type: 'FeatureCollection', features: [] },
+        temperature: { type: 'FeatureCollection', features: [] },
+        scales: {
+          depth: { min: 0.5, max: 3.0, levels: [] },
+          weed: { min: 0, max: 0.3, levels: [] },
+          fishRate: { min: 0, max: 0.5, levels: [] },
+          temperature: { min: 0, max: 1, levels: [] },
+        },
+        bounds: null,
+        tempStats: null,
+      },
+      progress: null,
+      warnings: [],
+    });
+    render(<Legend />);
+    expect(screen.getByText(/depth/i)).toBeInTheDocument();
+    expect(screen.queryByText(/fish rate/i)).toBeNull();
+    expect(screen.queryByText(/sweet spots/i)).toBeNull();
   });
 
   it('hides the temperature row when scan.layerVisibility.temperature is false', () => {

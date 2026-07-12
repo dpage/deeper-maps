@@ -27,9 +27,14 @@ export function Legend(): JSX.Element | null {
   const layerBundle = useDeeperMapsStore((s) => s.layerBundle);
   const activeScanId = useDeeperMapsStore((s) => s.activeScanId);
   const scans = useDeeperMapsStore((s) => s.scans);
+  const viewMode = useDeeperMapsStore((s) => s.viewMode);
   if (!layerBundle || !activeScanId) return null;
   const scan = scans[activeScanId];
   if (!scan) return null;
+
+  // The 3D surface is depth-coloured only, so the other overlays' legends would
+  // be misleading — show just the depth ramp.
+  const is3d = viewMode === '3d';
 
   return (
     <Paper
@@ -37,7 +42,7 @@ export function Legend(): JSX.Element | null {
       sx={{ position: 'absolute', bottom: 16, right: 16, p: 1.5, minWidth: 180 }}
     >
       <Stack spacing={0.75}>
-        {scan.layerVisibility.bathymetry && (
+        {(is3d || scan.layerVisibility.bathymetry) && (
           <Stack direction="row" spacing={1} alignItems="center">
             <RampSwatch ramp={viridisRamp} />
             <Typography variant="caption">
@@ -46,7 +51,7 @@ export function Legend(): JSX.Element | null {
             </Typography>
           </Stack>
         )}
-        {scan.layerVisibility.weed && (
+        {!is3d && scan.layerVisibility.weed && (
           <Stack direction="row" spacing={1} alignItems="center">
             <RampSwatch ramp={greensRamp} />
             <Typography variant="caption">
@@ -55,7 +60,7 @@ export function Legend(): JSX.Element | null {
             </Typography>
           </Stack>
         )}
-        {scan.layerVisibility.fishDensity && (
+        {!is3d && scan.layerVisibility.fishDensity && (
           <Stack direction="row" spacing={1} alignItems="center">
             <RampSwatch ramp={ylOrRdRamp} />
             <Typography variant="caption">
@@ -64,7 +69,7 @@ export function Legend(): JSX.Element | null {
             </Typography>
           </Stack>
         )}
-        {scan.layerVisibility.temperature && layerBundle.tempStats != null && (
+        {!is3d && scan.layerVisibility.temperature && layerBundle.tempStats != null && (
           <Stack direction="row" spacing={1} alignItems="center">
             <RampSwatch ramp={plasmaRamp} />
             <Typography variant="caption">
@@ -73,7 +78,7 @@ export function Legend(): JSX.Element | null {
             </Typography>
           </Stack>
         )}
-        {scan.layerVisibility.sweetSpots && (
+        {!is3d && scan.layerVisibility.sweetSpots && (
           <Stack spacing={0.25}>
             <Typography variant="caption">Sweet spots</Typography>
             <Stack direction="row" spacing={1}>

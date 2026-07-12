@@ -86,6 +86,39 @@ describe('buildLayers — bathymetry contours', () => {
     }
   });
 
+  it('carries the interpolated depth grid through for the 3D view', () => {
+    const clean: CleanBath = {
+      rows: Array.from({ length: 100 }, (_, i) => ({
+        ts_ms: i * 100,
+        lat: 51.7 + (i % 10) * 0.0001,
+        lon: -1.43 + Math.floor(i / 10) * 0.0001,
+        depth_m: 1 + ((i % 10) + Math.floor(i / 10)) * 0.1,
+        session_id: 0,
+        file_id: 0,
+      })),
+      sessions: [],
+      liftoutsRemoved: 0,
+    };
+    const lb = buildLayers(clean, emptyCells, { outlierTrimPct: 0 });
+    const grid = lb.depthGrid;
+    expect(grid).not.toBeNull();
+    expect(grid!.values).toBeInstanceOf(Float32Array);
+    expect(grid!.values.length).toBe(grid!.width * grid!.height);
+    expect(grid!.width).toBeGreaterThan(1);
+    expect(grid!.height).toBeGreaterThan(1);
+    // The anchor must reproject grid metres back to the scan's real-world corner.
+    expect(grid!.anchor.lon0).toBeCloseTo(-1.43, 5);
+    expect(grid!.anchor.lat0).toBeCloseTo(51.7, 5);
+    expect(grid!.anchor.latMetresPerDeg).toBeGreaterThan(0);
+    // At least one grid cell carries a real (non-NaN) sounding.
+    expect(Array.from(grid!.values).some((v) => !Number.isNaN(v))).toBe(true);
+  });
+
+  it('leaves depthGrid null for an empty scan', () => {
+    const lb = buildLayers(emptyClean, emptyCells, DEFAULT_COLOR_SCALE_OPTIONS);
+    expect(lb.depthGrid ?? null).toBeNull();
+  });
+
   it('coarsens the grid (does not blow up) for a scan spanning a huge area', () => {
     // A track spread over ~2 km × 2 km would be > 4,000,000 cells at 1 m — past
     // MAX_CONTOUR_GRID_CELLS. Exercises fitCellSize's coarsening branch and

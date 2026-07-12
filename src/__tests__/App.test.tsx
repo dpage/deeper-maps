@@ -65,9 +65,29 @@ describe('<App/>', () => {
     const setBaseLayerMock = vi.fn();
     useDeeperMapsStore.setState({ setBaseLayer: setBaseLayerMock });
     render(<App />);
-    await user.click(screen.getByRole('combobox'));
+    // Two selects now sit in the header (view mode + base layer); pick the base
+    // layer one by its rendered value.
+    const baseLayerCombo = screen
+      .getAllByRole('combobox')
+      .find((el) => /openstreetmap/i.test(el.textContent ?? ''));
+    await user.click(baseLayerCombo!);
     await user.click(screen.getByRole('option', { name: /satellite/i }));
     expect(setBaseLayerMock).toHaveBeenCalledWith('satellite');
+  });
+
+  // Coverage extension: switching the view mode dispatches setViewMode on the
+  // store — the App wires the header's onViewModeChange straight through.
+  it('changing the view mode dispatches setViewMode with the new value', async () => {
+    const user = (await import('@testing-library/user-event')).default.setup();
+    const setViewModeMock = vi.fn();
+    useDeeperMapsStore.setState({ setViewMode: setViewModeMock });
+    render(<App />);
+    const viewModeCombo = screen
+      .getAllByRole('combobox')
+      .find((el) => /2D map/i.test(el.textContent ?? ''));
+    await user.click(viewModeCombo!);
+    await user.click(screen.getByRole('option', { name: /3D lake bed/i }));
+    expect(setViewModeMock).toHaveBeenCalledWith('3d');
   });
 
   // The header reflects the current global baseLayer regardless of whether a

@@ -108,10 +108,39 @@ export function lerpHex(c1: string, c2: string, t: number): string {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 }
 
-function parseHex(hex: string): [number, number, number] {
+export function parseHex(hex: string): [number, number, number] {
   return [
     parseInt(hex.slice(1, 3), 16),
     parseInt(hex.slice(3, 5), 16),
     parseInt(hex.slice(5, 7), 16),
   ];
+}
+
+/**
+ * Sample a colour at `value` from a `[stopValue, hex, stopValue, hex, …]`
+ * schedule — the flattened form {@link quantileColorStops} produces and the
+ * MapLibre `interpolate(['linear'], …, …stops)` expression consumes. Values
+ * below the first / above the last stop clamp to the endpoint colour; between
+ * two stops the two hex colours are linearly blended. Used by the 3D lake-bed
+ * mesh so its per-vertex colours match the 2D bathymetry fill exactly.
+ */
+export function interpolateStops(
+  value: number,
+  stops: readonly (number | string)[],
+): [number, number, number] {
+  const n = stops.length / 2;
+  if (n === 0) return [0, 0, 0];
+  const stopVal = (i: number): number => stops[i * 2] as number;
+  const stopHex = (i: number): string => stops[i * 2 + 1] as string;
+  if (value <= stopVal(0)) return parseHex(stopHex(0));
+  if (value >= stopVal(n - 1)) return parseHex(stopHex(n - 1));
+  for (let i = 0; i < n - 1; i++) {
+    const v1 = stopVal(i);
+    const v2 = stopVal(i + 1);
+    if (value <= v2) {
+      const f = (value - v1) / Math.max(v2 - v1, 1e-12);
+      return parseHex(lerpHex(stopHex(i), stopHex(i + 1), Math.max(0, Math.min(1, f))));
+    }
+  }
+  return parseHex(stopHex(n - 1));
 }

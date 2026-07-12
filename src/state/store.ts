@@ -15,6 +15,7 @@ import {
   type LayerVisibility,
   type PersistedFileMeta,
   type StoredScan,
+  type ViewMode,
 } from '../storage/types';
 import { CURRENT_BUNDLE_VERSION, type LayerBundle, type PipelineOptions } from '../analysis/types';
 import {
@@ -75,6 +76,54 @@ function persistBaseLayer(base: BaseLayerId): void {
   }
 }
 
+const VIEW_MODE_KEY = 'deeper-maps:viewMode';
+const EXAGGERATION_KEY = 'deeper-maps:verticalExaggeration';
+
+/** Clamp range for the 3D vertical-exaggeration control (matches the slider). */
+export const MIN_VERTICAL_EXAGGERATION = 1;
+export const MAX_VERTICAL_EXAGGERATION = 30;
+export const DEFAULT_VERTICAL_EXAGGERATION = 6;
+
+function loadViewMode(): ViewMode {
+  try {
+    if (globalThis.localStorage?.getItem(VIEW_MODE_KEY) === '3d') return '3d';
+  } catch {
+    // localStorage may throw in private mode or sandboxed contexts; ignore.
+  }
+  return '2d';
+}
+
+function persistViewMode(mode: ViewMode): void {
+  try {
+    globalThis.localStorage?.setItem(VIEW_MODE_KEY, mode);
+  } catch {
+    // Ignore; UI state still updates in-memory.
+  }
+}
+
+function clampExaggeration(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_VERTICAL_EXAGGERATION;
+  return Math.min(MAX_VERTICAL_EXAGGERATION, Math.max(MIN_VERTICAL_EXAGGERATION, value));
+}
+
+function loadExaggeration(): number {
+  try {
+    const raw = globalThis.localStorage?.getItem(EXAGGERATION_KEY);
+    if (raw != null) return clampExaggeration(Number(raw));
+  } catch {
+    // Ignore.
+  }
+  return DEFAULT_VERTICAL_EXAGGERATION;
+}
+
+function persistExaggeration(value: number): void {
+  try {
+    globalThis.localStorage?.setItem(EXAGGERATION_KEY, String(value));
+  } catch {
+    // Ignore.
+  }
+}
+
 export interface DeeperMapsState {
   scans: Record<string, StoredScan>;
   activeScanId: string | null;
@@ -87,6 +136,17 @@ export interface DeeperMapsState {
    * scans should not change the user's preferred base map.
    */
   baseLayer: BaseLayerId;
+  /**
+   * Global app-level view mode: `'2d'` top-down overlays or `'3d'` explorable
+   * lake-bed surface. Persisted to localStorage under `deeper-maps:viewMode`.
+   */
+  viewMode: ViewMode;
+  /**
+   * Vertical exaggeration applied to the 3D lake-bed surface. Persisted under
+   * `deeper-maps:verticalExaggeration`; clamped to
+   * [{@link MIN_VERTICAL_EXAGGERATION}, {@link MAX_VERTICAL_EXAGGERATION}].
+   */
+  verticalExaggeration: number;
   /**
    * Monotonic counter that increments every time the user explicitly requests a
    * scan be (re)framed — i.e. every `setActiveScan` and `saveAndAnalyse` call,
@@ -114,6 +174,10 @@ export interface DeeperMapsState {
    */
   setMaxSweetSpots: (scanId: string, max: number) => Promise<void>;
   setBaseLayer: (base: BaseLayerId) => void;
+  /** Switch between the 2D overlay view and the 3D lake-bed view. */
+  setViewMode: (mode: ViewMode) => void;
+  /** Set the 3D vertical exaggeration (clamped to the supported range). */
+  setVerticalExaggeration: (value: number) => void;
   renameScan: (scanId: string, name: string) => Promise<void>;
   deleteScan: (scanId: string) => Promise<void>;
   /**
@@ -354,6 +418,8 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     progress: null,
     warnings: [],
     baseLayer: loadBaseLayer(),
+    viewMode: loadViewMode(),
+    verticalExaggeration: loadExaggeration(),
     frameRequestSeq: 0,
 
     async hydrate() {
@@ -512,6 +578,17 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     setBaseLayer(base) {
       set({ baseLayer: base });
       persistBaseLayer(base);
+    },
+
+    setViewMode(mode) {
+      set({ viewMode: mode });
+      persistViewMode(mode);
+    },
+
+    setVerticalExaggeration(value) {
+      const next = clampExaggeration(value);
+      set({ verticalExaggeration: next });
+      persistExaggeration(next);
     },
 
     async renameScan(scanId, name) {

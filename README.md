@@ -16,6 +16,7 @@ Open `index.html` in a browser to use it. No installation, no server, no account
   - Weed cover (Greens)
   - Fish density graduated circles (YlOrRd, sized by sample count)
   - Sweet spots — Gold / Silver / Bronze / Weeded categorical markers
+- 3D lake-bed view — switch the header's **View** selector to render the scan as an explorable, depth-coloured 3D surface (tilt/rotate to fly around it; adjustable vertical exaggeration). Built from the same interpolated depth grid as the contours, drawn in the map's own WebGL context — no extra dependencies.
 - Threshold sliders with calibrated defaults; tweak any parameter, see the map update in seconds.
 - Scans library backed by IndexedDB — your scans persist across sessions.
 - Merge a re-visited lake's later exports into one scan, and export any scan (merged or not) back to the import zip format to share with others — both from the scan's kebab menu.
@@ -56,6 +57,7 @@ src/worker/     Web Worker hosting the pipeline; memoised stage cache; cancellat
 src/storage/    IndexedDB wrapper (scans + raw files + cached results).
 src/state/      Zustand store; debounces threshold changes; mediates UI ↔ worker ↔ storage.
 src/map/        MapLibre instance, layer style specs, colour ramps.
+src/map/lakebed/ 3D lake-bed view: pure grid→mesh builder + MapLibre custom WebGL layer.
 src/ui/         MUI components: layout, header, scan library, upload dialog, controls, legend, progress banner.
 src/lib/        SHA-256 helpers (Web Crypto).
 ```

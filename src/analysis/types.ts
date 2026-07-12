@@ -19,8 +19,12 @@ import type { FeatureCollection } from 'geojson';
  *       repopulates each scan's persisted `hasSonar` flag (drives which layer
  *       controls the UI enables). Scans analysed under v7 hit the cache and
  *       would otherwise never report it.
+ *   9 — adds `depthGrid` field (the interpolated lake-bed elevation model that
+ *       drives the 3D view). Previously the IDW grid was discarded after
+ *       contouring; now it is carried through so the 3D renderer can build a
+ *       mesh without a worker round-trip.
  */
-export const CURRENT_BUNDLE_VERSION = 8;
+export const CURRENT_BUNDLE_VERSION = 9;
 
 export interface LiftoutOptions {
   hardThresholdM: number;
@@ -185,6 +189,36 @@ export interface LayerScales {
   temperature: ScaleRange;
 }
 
+/**
+ * The interpolated lake-bed elevation model: a regular grid of depths produced
+ * by the same IDW resample that feeds the bathymetry contours, carried through
+ * so the 3D view can build a surface mesh from it. Row-major, `width × height`.
+ *
+ * `values` are depths in metres (positive = deeper), `NaN` for grid cells with
+ * no sounding within the IDW radius (unscanned water) — the mesh builder skips
+ * any triangle touching a NaN so open water leaves a hole rather than a spike.
+ *
+ * Cell (`gx`, `gy`) sits at local metre coordinates
+ * `(origin.x + gx·cellSizeM, origin.y + gy·cellSizeM)`, which reproject to
+ * lon/lat via `anchor` — the same forward projection `buildBathymetryContours`
+ * used, inverted.
+ */
+export interface DepthGrid {
+  width: number;
+  height: number;
+  cellSizeM: number;
+  origin: { x: number; y: number };
+  anchor: {
+    lat0: number;
+    lon0: number;
+    /** Metres per degree of longitude at the scan's mean latitude. */
+    lonMetresPerDeg: number;
+    /** Metres per degree of latitude (constant). */
+    latMetresPerDeg: number;
+  };
+  values: Float32Array;
+}
+
 export interface LayerBundle {
   bathymetry: FeatureCollection;
   weed: FeatureCollection;
@@ -211,6 +245,13 @@ export interface LayerBundle {
    * has no cells with temperature data.
    */
   temperature: FeatureCollection;
+  /**
+   * Interpolated lake-bed elevation model driving the 3D view. `null` when the
+   * scan produced no bathymetry rows (nothing to build a surface from).
+   * Optional for backward compatibility with bundles cached before v9; the
+   * version bump forces a re-analyse so it populates.
+   */
+  depthGrid?: DepthGrid | null;
   scales: LayerScales;
   /**
    * Geographic bounding box of the scan's actual data, derived from

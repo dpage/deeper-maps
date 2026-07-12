@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   greensRamp,
+  interpolateStops,
   lerpHex,
+  parseHex,
   quantileColorStops,
   sampleRamp,
   viridisRamp,
@@ -98,6 +100,41 @@ describe('sampleRamp', () => {
       [0.5, '#888888'],
     ];
     expect(sampleRamp(ramp, 0.9)).toBe('#888888');
+  });
+});
+
+describe('parseHex', () => {
+  it('splits a hex colour into r/g/b bytes', () => {
+    expect(parseHex('#000000')).toEqual([0, 0, 0]);
+    expect(parseHex('#ffffff')).toEqual([255, 255, 255]);
+    expect(parseHex('#8040c0')).toEqual([0x80, 0x40, 0xc0]);
+  });
+});
+
+describe('interpolateStops', () => {
+  const stops = [0, '#000000', 10, '#ffffff'] as const;
+
+  it('clamps to the first colour below the first stop', () => {
+    expect(interpolateStops(-5, stops)).toEqual([0, 0, 0]);
+  });
+
+  it('clamps to the last colour above the last stop', () => {
+    expect(interpolateStops(999, stops)).toEqual([255, 255, 255]);
+  });
+
+  it('blends linearly between two stops', () => {
+    // Halfway between #000000 and #ffffff over [0,10] → 128 per channel.
+    expect(interpolateStops(5, stops)).toEqual([128, 128, 128]);
+  });
+
+  it('picks the right segment across multiple stops', () => {
+    const multi = [0, '#000000', 10, '#ffffff', 20, '#000000'];
+    // 15 is halfway down the second segment (white → black).
+    expect(interpolateStops(15, multi)).toEqual([128, 128, 128]);
+  });
+
+  it('returns black for an empty schedule', () => {
+    expect(interpolateStops(1, [])).toEqual([0, 0, 0]);
   });
 });
 

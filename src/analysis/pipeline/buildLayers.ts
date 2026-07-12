@@ -4,6 +4,7 @@ import type {
   CategorisedCells,
   CleanBath,
   ColorScaleOptions,
+  DepthGrid,
   LayerBundle,
   LayerScales,
   ScaleRange,
@@ -112,8 +113,14 @@ function projectionFromCells(cells: CategorisedCells): ProjectionAnchor {
   };
 }
 
-function buildBathymetryContours(clean: CleanBath, scale: ScaleRange): FeatureCollection {
-  if (clean.rows.length === 0) return emptyFc();
+interface BathymetryResult {
+  contours: FeatureCollection;
+  /** The IDW grid the contours were derived from; `null` for an empty scan. */
+  depthGrid: DepthGrid | null;
+}
+
+function buildBathymetryContours(clean: CleanBath, scale: ScaleRange): BathymetryResult {
+  if (clean.rows.length === 0) return { contours: emptyFc(), depthGrid: null };
   const anchor = projectionFromCleanBath(clean);
   const lonMetresPerDeg = METRES_PER_DEG_LAT * Math.cos((anchor.meanLat * Math.PI) / 180);
 
@@ -162,7 +169,24 @@ function buildBathymetryContours(clean: CleanBath, scale: ScaleRange): FeatureCo
     properties: { level: f.properties.level },
   }));
 
-  return { type: 'FeatureCollection', features };
+  // Carry the grid through for the 3D view. Downcast to Float32 — depths need
+  // nowhere near f64 precision, and it halves what we structured-clone across
+  // the worker boundary and persist to IndexedDB.
+  const depthGrid: DepthGrid = {
+    width: grid.width,
+    height: grid.height,
+    cellSizeM: grid.cellSize,
+    origin: { x: grid.origin.x, y: grid.origin.y },
+    anchor: {
+      lat0: anchor.lat0,
+      lon0: anchor.lon0,
+      lonMetresPerDeg,
+      latMetresPerDeg: METRES_PER_DEG_LAT,
+    },
+    values: Float32Array.from(grid.values),
+  };
+
+  return { contours: { type: 'FeatureCollection', features }, depthGrid };
 }
 
 function buildWeedContours(cells: CategorisedCells, scale: ScaleRange): FeatureCollection {
@@ -439,7 +463,7 @@ export function buildLayers(
     temperature: safeScale(temps, colorScale.outlierTrimPct, TEMPERATURE_CONTOUR_LEVELS),
   };
 
-  const bathymetry = buildBathymetryContours(clean, scales.depth);
+  const { contours: bathymetry, depthGrid } = buildBathymetryContours(clean, scales.depth);
   const bathymetryLines = polygonsToLines(bathymetry);
 
   return {
@@ -450,6 +474,7 @@ export function buildLayers(
     sweetSpots: hasSonar ? buildSweetSpots(cells) : EMPTY_FC,
     spots: buildSpots(cells, hasSonar),
     temperature: buildTemperatureContours(cells, scales.temperature),
+    depthGrid,
     scales,
     bounds: computeBounds(clean),
     tempStats: computeTempStats(clean),

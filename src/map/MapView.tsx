@@ -48,6 +48,8 @@ import {
   spotDistanceMeters,
   type SpotProperties,
 } from './spotInfo';
+import { LAKEBED_3D_LAYER_ID, LakeBed3DLayer } from './lakebed/LakeBed3DLayer';
+import { buildLakeBedMesh } from './lakebed/mesh';
 
 // A tap counts as "on the scan" when the nearest measured cell is within this
 // many cell-widths (in real-world metres, so it's zoom-independent). Beyond it
@@ -105,6 +107,22 @@ const LAYER_VISIBILITY_KEYS: Array<{ key: keyof LayerVisibility; layerId: string
   { key: 'sweetSpots', layerId: SWEET_SPOTS_LAYER_ID },
   { key: 'temperature', layerId: TEMPERATURE_LAYER_ID },
 ];
+
+// Every 2D overlay layer id, force-hidden while the 3D lake-bed view is active
+// (the surface replaces them; leaving flat overlays on would z-fight the tilted
+// mesh and clutter the scene).
+const ALL_OVERLAY_LAYER_IDS = [
+  BATHYMETRY_LAYER_ID,
+  BATHYMETRY_LINES_LAYER_ID,
+  WEED_LAYER_ID,
+  TEMPERATURE_LAYER_ID,
+  FISH_DENSITY_LAYER_ID,
+  SWEET_SPOTS_LAYER_ID,
+];
+
+// Camera pitch (degrees) the map eases to when entering the 3D view, so the
+// lake bed reads as a surface without the user having to tilt manually.
+const VIEW_3D_PITCH = 60;
 
 /**
  * Apply the given scan's layerVisibility flags to all overlay layers.
@@ -202,6 +220,14 @@ export function MapView(): JSX.Element {
   // the latest set without re-subscribing.
   const spotsRef = useRef<GeoJSON.Feature<GeoJSON.Point>[]>([]);
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  // The 3D lake-bed custom layer, when mounted, plus the layerBundle its mesh
+  // was built from (so we only rebuild the mesh when the bundle actually
+  // changes). Both are cleared whenever setStyle wipes the layer stack.
+  const lakeBedLayerRef = useRef<LakeBed3DLayer | null>(null);
+  const meshBundleRef = useRef<LayerBundle | null>(null);
+  // The last viewMode we ran a camera transition for, so entering/leaving 3D
+  // eases the pitch exactly once per transition rather than on every re-render.
+  const lastPitchModeRef = useRef<'2d' | '3d' | null>(null);
   const closeSpotPopup = (): void => {
     popupRef.current?.remove();
     popupRef.current = null;
@@ -212,6 +238,8 @@ export function MapView(): JSX.Element {
   const activeScan = activeScanId ? scans[activeScanId] : undefined;
   const maxSweetSpots = activeScan?.maxSweetSpots ?? DEFAULT_MAX_SWEET_SPOTS;
   const baseLayer = useDeeperMapsStore((s) => s.baseLayer);
+  const viewMode = useDeeperMapsStore((s) => s.viewMode);
+  const verticalExaggeration = useDeeperMapsStore((s) => s.verticalExaggeration);
   const frameRequestSeq = useDeeperMapsStore((s) => s.frameRequestSeq);
 
   // The store bumps `frameRequestSeq` every time the user picks a scan
@@ -288,6 +316,67 @@ export function MapView(): JSX.Element {
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  /** Remove the 3D lake-bed layer if present and forget its cached mesh. */
+  const removeLakeBed = (map: MapLibreMap): void => {
+    if (lakeBedLayerRef.current && map.getLayer(LAKEBED_3D_LAYER_ID)) {
+      map.removeLayer(LAKEBED_3D_LAYER_ID);
+    }
+    lakeBedLayerRef.current = null;
+    meshBundleRef.current = null;
+  };
+
+  /**
+   * Ensure the 3D lake-bed layer exists and reflects the current bundle and
+   * exaggeration. Builds the mesh from `layerBundle.depthGrid` (pure) and adds
+   * the custom layer if missing; if the bundle changed since the mesh was last
+   * built, re-uploads the mesh in place. No-op (and removes any stale layer)
+   * when the active scan has no depth grid to render.
+   */
+  const ensureLakeBed = (map: MapLibreMap): void => {
+    const snapshot = useDeeperMapsStore.getState();
+    const bundle = snapshot.layerBundle;
+    const grid = bundle?.depthGrid;
+    if (!bundle || !grid) {
+      removeLakeBed(map);
+      return;
+    }
+    let layer = lakeBedLayerRef.current;
+    if (!layer) {
+      const mesh = buildLakeBedMesh(grid, bundle.scales.depth);
+      meshBundleRef.current = bundle;
+      layer = new LakeBed3DLayer(mesh, snapshot.verticalExaggeration);
+      lakeBedLayerRef.current = layer;
+      if (!map.getLayer(LAKEBED_3D_LAYER_ID)) map.addLayer(layer);
+    } else if (meshBundleRef.current !== bundle) {
+      meshBundleRef.current = bundle;
+      layer.setMesh(buildLakeBedMesh(grid, bundle.scales.depth));
+    }
+    layer.setExaggeration(snapshot.verticalExaggeration);
+  };
+
+  /**
+   * Reconcile the map with the current view mode. In 2D: tear down the 3D layer
+   * and restore the scan's overlay visibility. In 3D: hide every 2D overlay and
+   * (re)build the lake-bed surface. Called from every place that mutates the
+   * layer stack (initial load, style swap, bundle update, mode/visibility
+   * change) so the two modes never leave stray layers behind.
+   */
+  const syncView = (map: MapLibreMap): void => {
+    const snapshot = useDeeperMapsStore.getState();
+    const scan = snapshot.activeScanId ? snapshot.scans[snapshot.activeScanId] : undefined;
+    if (snapshot.viewMode === '3d') {
+      for (const id of ALL_OVERLAY_LAYER_IDS) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+      }
+      ensureLakeBed(map);
+    } else {
+      removeLakeBed(map);
+      if (scan) applyVisibility(map, scan);
+    }
+  };
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
   /**
    * Adds the four overlay sources/layers (with empty data) and the fish-icon
    * SDF image, then replays the current store snapshot's layerBundle data
@@ -300,6 +389,10 @@ export function MapView(): JSX.Element {
    * (avoid an unwanted fly), 800 for runtime style swaps (smooth reframe).
    */
   const addOverlaysAndReplay = (map: MapLibreMap, duration: number): void => {
+    // A preceding setStyle (base-layer swap) wipes ALL layers, including our
+    // custom 3D layer — forget the stale instance so syncView re-adds it.
+    lakeBedLayerRef.current = null;
+    meshBundleRef.current = null;
     // Register the fish-icon SDF before the fish-density layer references it.
     if (!map.hasImage(FISH_ICON_NAME)) {
       map.addImage(FISH_ICON_NAME, buildFishIcon(), { sdf: true });
@@ -348,10 +441,8 @@ export function MapView(): JSX.Element {
       applyColorExpressions(map, initialBundle);
     }
     const initialScanId = snapshot.activeScanId;
-    const initialScan = initialScanId ? snapshot.scans[initialScanId] : undefined;
-    if (initialScan) {
-      applyVisibility(map, initialScan);
-    }
+    // syncView applies overlay visibility in 2D and builds the surface in 3D.
+    syncView(map);
     if (initialBundle?.bounds && initialScanId && lastFramedScanIdRef.current !== initialScanId) {
       map.fitBounds([initialBundle.bounds.sw, initialBundle.bounds.ne], {
         padding: 40,
@@ -448,6 +539,9 @@ export function MapView(): JSX.Element {
       applySweetSpots(map);
       spotsRef.current = (layerBundle.spots?.features ?? []) as GeoJSON.Feature<GeoJSON.Point>[];
       applyColorExpressions(map, layerBundle);
+      // Rebuild the 3D surface for the new bundle (and keep overlays hidden in
+      // 3D); a no-op that just refreshes overlay visibility in 2D.
+      syncView(map);
       if (layerBundle.bounds && activeScanId && activeScanId !== lastFramedScanIdRef.current) {
         map.fitBounds([layerBundle.bounds.sw, layerBundle.bounds.ne], {
           padding: 40,
@@ -473,8 +567,10 @@ export function MapView(): JSX.Element {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !activeScan) return;
+    // Route through syncView so a visibility change in 3D keeps the overlays
+    // hidden (and leaves the surface up) rather than un-hiding them.
     const apply = (): void => {
-      applyVisibility(map, activeScan);
+      syncView(map);
     };
     if (overlaysReadyRef.current) {
       apply();
@@ -482,6 +578,35 @@ export function MapView(): JSX.Element {
       void map.once('style.load', apply);
     }
   }, [activeScan?.layerVisibility, activeScan]);
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  // View-mode change: reconcile the layer stack and ease the camera pitch in/out
+  // of the 3D view. The pitch transition runs once per actual mode change.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = (): void => {
+      syncView(map);
+      if (lastPitchModeRef.current !== viewMode) {
+        map.easeTo({ pitch: viewMode === '3d' ? VIEW_3D_PITCH : 0, duration: 600 });
+        lastPitchModeRef.current = viewMode;
+      }
+    };
+    if (overlaysReadyRef.current) {
+      apply();
+    } else {
+      void map.once('style.load', apply);
+    }
+  }, [viewMode]);
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  // Vertical-exaggeration change: push the new factor straight to the live
+  // layer's shader uniform — no geometry rebuild, no map restyle.
+  useEffect(() => {
+    lakeBedLayerRef.current?.setExaggeration(verticalExaggeration);
+  }, [verticalExaggeration]);
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */

@@ -106,6 +106,8 @@ beforeEach(async () => {
     progress: null,
     warnings: [],
     baseLayer: 'osm',
+    viewMode: '2d',
+    verticalExaggeration: 6,
     frameRequestSeq: 0,
   });
   __resetDebounceTimer();
@@ -461,6 +463,46 @@ describe('useDeeperMapsStore', () => {
       expect(() => useDeeperMapsStore.getState().setBaseLayer('satellite')).not.toThrow();
       // Store still updates in-memory even though persistence failed.
       expect(useDeeperMapsStore.getState().baseLayer).toBe('satellite');
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('setViewMode updates the store value and persists it to localStorage', () => {
+    expect(useDeeperMapsStore.getState().viewMode).toBe('2d');
+
+    useDeeperMapsStore.getState().setViewMode('3d');
+
+    expect(useDeeperMapsStore.getState().viewMode).toBe('3d');
+    expect(globalThis.localStorage?.getItem('deeper-maps:viewMode')).toBe('3d');
+  });
+
+  it('setVerticalExaggeration clamps to the supported range and persists', () => {
+    useDeeperMapsStore.getState().setVerticalExaggeration(12);
+    expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(12);
+    expect(globalThis.localStorage?.getItem('deeper-maps:verticalExaggeration')).toBe('12');
+
+    // Above the ceiling clamps down; below the floor clamps up.
+    useDeeperMapsStore.getState().setVerticalExaggeration(999);
+    expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(30);
+
+    useDeeperMapsStore.getState().setVerticalExaggeration(-5);
+    expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(1);
+
+    // A non-finite value falls back to the default.
+    useDeeperMapsStore.getState().setVerticalExaggeration(Number.NaN);
+    expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(6);
+  });
+
+  it('setViewMode / setVerticalExaggeration do not throw when localStorage throws', () => {
+    const setItemSpy = vi.spyOn(globalThis.localStorage, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded');
+    });
+    try {
+      expect(() => useDeeperMapsStore.getState().setViewMode('3d')).not.toThrow();
+      expect(() => useDeeperMapsStore.getState().setVerticalExaggeration(10)).not.toThrow();
+      expect(useDeeperMapsStore.getState().viewMode).toBe('3d');
+      expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(10);
     } finally {
       setItemSpy.mockRestore();
     }
@@ -868,6 +910,66 @@ describe('useDeeperMapsStore — baseLayer persistence', () => {
     try {
       const mod = await import('../store');
       expect(mod.useDeeperMapsStore.getState().baseLayer).toBe('osm');
+    } finally {
+      getItemSpy.mockRestore();
+    }
+  });
+});
+
+describe('useDeeperMapsStore — viewMode & exaggeration persistence', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    globalThis.localStorage?.clear();
+  });
+
+  it("initialises viewMode from localStorage when set to '3d'", async () => {
+    globalThis.localStorage?.setItem('deeper-maps:viewMode', '3d');
+    const mod = await import('../store');
+    expect(mod.useDeeperMapsStore.getState().viewMode).toBe('3d');
+  });
+
+  it("defaults viewMode to '2d' when localStorage is empty or bogus", async () => {
+    globalThis.localStorage?.setItem('deeper-maps:viewMode', 'nonsense');
+    const mod = await import('../store');
+    expect(mod.useDeeperMapsStore.getState().viewMode).toBe('2d');
+  });
+
+  it("falls back to '2d' when localStorage.getItem throws", async () => {
+    const getItemSpy = vi.spyOn(globalThis.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('access denied');
+    });
+    try {
+      const mod = await import('../store');
+      expect(mod.useDeeperMapsStore.getState().viewMode).toBe('2d');
+    } finally {
+      getItemSpy.mockRestore();
+    }
+  });
+
+  it('initialises verticalExaggeration from a stored value (clamped)', async () => {
+    globalThis.localStorage?.setItem('deeper-maps:verticalExaggeration', '15');
+    const mod = await import('../store');
+    expect(mod.useDeeperMapsStore.getState().verticalExaggeration).toBe(15);
+  });
+
+  it('clamps an out-of-range stored exaggeration on init', async () => {
+    globalThis.localStorage?.setItem('deeper-maps:verticalExaggeration', '9999');
+    const mod = await import('../store');
+    expect(mod.useDeeperMapsStore.getState().verticalExaggeration).toBe(30);
+  });
+
+  it('defaults exaggeration when no value is stored', async () => {
+    const mod = await import('../store');
+    expect(mod.useDeeperMapsStore.getState().verticalExaggeration).toBe(6);
+  });
+
+  it('falls back to the default exaggeration when localStorage.getItem throws', async () => {
+    const getItemSpy = vi.spyOn(globalThis.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('access denied');
+    });
+    try {
+      const mod = await import('../store');
+      expect(mod.useDeeperMapsStore.getState().verticalExaggeration).toBe(6);
     } finally {
       getItemSpy.mockRestore();
     }

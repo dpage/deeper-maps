@@ -203,6 +203,9 @@ class MockMap {
   resize = vi.fn();
   setCenter = vi.fn();
   setZoom = vi.fn();
+  easeTo = vi.fn();
+  triggerRepaint = vi.fn();
+  getPitch = vi.fn(() => 0);
   fitBounds = vi.fn(
     (bounds: [[number, number], [number, number]], options: Record<string, unknown>) => {
       __fitBoundsCalls.push({ bounds, options });

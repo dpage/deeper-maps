@@ -4,6 +4,14 @@ import type { DeviceType } from '../analysis/parsers/types';
 export type BaseLayerId = 'osm' | 'satellite';
 
 /**
+ * How the scan is drawn over the basemap. `'2d'` is the classic top-down
+ * contour/overlay view; `'3d'` renders the interpolated lake bed as an
+ * explorable, depth-coloured surface (tilt/rotate to fly around it). A global
+ * app-level preference, persisted like {@link BaseLayerId} — not per-scan.
+ */
+export type ViewMode = '2d' | '3d';
+
+/**
  * Default cap on how many sweet-spot markers are shown at once. A busy lake can
  * categorise hundreds of cells as sweet spots, which renders as an unreadable
  * blanket of circles; the map shows only the best `maxSweetSpots` within the
