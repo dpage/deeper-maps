@@ -67,6 +67,26 @@ const SPOT_HIT_FLOOR_M = 15;
 // and Esri World Imagery in most regions.
 const RASTER_SOURCE_MAX_ZOOM = 19;
 
+// A plain backdrop drawn under the basemap. In 2D the raster tiles cover it;
+// in 3D — where we hide the basemap entirely, since the model is a standalone
+// view that doesn't need a map under it — it becomes the clean background the
+// lake-bed surface sits on. Always present in the style so hiding the raster
+// reveals it rather than the canvas clear colour.
+const BACKDROP_LAYER_ID = 'backdrop';
+const BACKDROP_COLOR = '#e8edf2';
+const BACKDROP_LAYER: maplibregl.LayerSpecification = {
+  id: BACKDROP_LAYER_ID,
+  type: 'background',
+  paint: { 'background-color': BACKDROP_COLOR },
+  // Hidden by default so the 2D view is unchanged; syncView reveals it in 3D.
+  layout: { visibility: 'none' },
+};
+
+// The basemap raster layer id in each style. Hidden in the 3D view.
+const OSM_LAYER_ID = 'osm';
+const ESRI_LAYER_ID = 'esri';
+const BASEMAP_LAYER_IDS = [OSM_LAYER_ID, ESRI_LAYER_ID];
+
 const OSM_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -78,7 +98,7 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
       attribution: '© OpenStreetMap contributors',
     },
   },
-  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+  layers: [BACKDROP_LAYER, { id: OSM_LAYER_ID, type: 'raster', source: 'osm' }],
 };
 
 const SATELLITE_STYLE: maplibregl.StyleSpecification = {
@@ -94,7 +114,7 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
       attribution: 'Tiles © Esri',
     },
   },
-  layers: [{ id: 'esri', type: 'raster', source: 'esri' }],
+  layers: [BACKDROP_LAYER, { id: ESRI_LAYER_ID, type: 'raster', source: 'esri' }],
 };
 
 // Layers whose visibility maps 1:1 to a single LayerVisibility flag.
@@ -352,22 +372,37 @@ export function MapView(): JSX.Element {
     layer.setExaggeration(snapshot.verticalExaggeration);
   };
 
+  const setLayerVisible = (map: MapLibreMap, id: string, visible: boolean): void => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+  };
+
+  /** Swap the map between "basemap" (2D) and "plain backdrop" (3D). In 3D the
+   *  basemap raster is hidden and the backdrop shown, so the model stands alone
+   *  on a clean background; in 2D the reverse, leaving the 2D view unchanged. */
+  const setBasemapVisible = (map: MapLibreMap, visible: boolean): void => {
+    for (const id of BASEMAP_LAYER_IDS) setLayerVisible(map, id, visible);
+    setLayerVisible(map, BACKDROP_LAYER_ID, !visible);
+  };
+
   /**
-   * Reconcile the map with the current view mode. In 2D: tear down the 3D layer
-   * and restore the scan's overlay visibility. In 3D: hide every 2D overlay and
-   * (re)build the lake-bed surface. Called from every place that mutates the
-   * layer stack (initial load, style swap, bundle update, mode/visibility
-   * change) so the two modes never leave stray layers behind.
+   * Reconcile the map with the current view mode. In 2D: show the basemap, tear
+   * down the 3D layer and restore the scan's overlay visibility. In 3D: hide the
+   * basemap and every 2D overlay — the model is a standalone view that doesn't
+   * need a map under it — and (re)build the lake-bed surface. Called from every
+   * place that mutates the layer stack (initial load, style swap, bundle update,
+   * mode/visibility change) so the two modes never leave stray layers behind.
    */
   const syncView = (map: MapLibreMap): void => {
     const snapshot = useDeeperMapsStore.getState();
     const scan = snapshot.activeScanId ? snapshot.scans[snapshot.activeScanId] : undefined;
     if (snapshot.viewMode === '3d') {
+      setBasemapVisible(map, false);
       for (const id of ALL_OVERLAY_LAYER_IDS) {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
       }
       ensureLakeBed(map);
     } else {
+      setBasemapVisible(map, true);
       removeLakeBed(map);
       if (scan) applyVisibility(map, scan);
     }
