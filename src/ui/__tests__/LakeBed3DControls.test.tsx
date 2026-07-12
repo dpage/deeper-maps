@@ -69,19 +69,22 @@ describe('<LakeBed3DControls/>', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('shows the exaggeration slider in 3D mode with a depth grid', () => {
+  it('shows the exaggeration + tilt sliders and reset button in 3D with a depth grid', () => {
     useDeeperMapsStore.setState({
       viewMode: '3d',
       verticalExaggeration: 8,
+      viewPitch: 55,
       layerBundle: bundle(DEPTH_GRID),
     });
     render(<LakeBed3DControls />);
     expect(screen.getByText(/Vertical exaggeration ×8/i)).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: /vertical exaggeration/i })).toBeInTheDocument();
-    expect(screen.getByText(/tilt & rotate/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tilt 55°/i)).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: /camera tilt/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reset view/i })).toBeInTheDocument();
   });
 
-  it('pushes slider changes into the store', () => {
+  it('pushes exaggeration slider changes into the store', () => {
     useDeeperMapsStore.setState({
       viewMode: '3d',
       verticalExaggeration: 6,
@@ -92,5 +95,28 @@ describe('<LakeBed3DControls/>', () => {
     // MUI Slider responds to keyboard arrows — a deterministic way to nudge it.
     fireEvent.keyDown(slider, { key: 'ArrowRight' });
     expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(7);
+  });
+
+  it('pushes tilt slider changes into the store', () => {
+    useDeeperMapsStore.setState({
+      viewMode: '3d',
+      viewPitch: 55,
+      layerBundle: bundle(DEPTH_GRID),
+    });
+    render(<LakeBed3DControls />);
+    const slider = screen.getByRole('slider', { name: /camera tilt/i });
+    fireEvent.keyDown(slider, { key: 'ArrowRight' });
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(56);
+  });
+
+  it('Reset view bumps the reset sequence', () => {
+    useDeeperMapsStore.setState({
+      viewMode: '3d',
+      resetViewSeq: 0,
+      layerBundle: bundle(DEPTH_GRID),
+    });
+    render(<LakeBed3DControls />);
+    fireEvent.click(screen.getByRole('button', { name: /reset view/i }));
+    expect(useDeeperMapsStore.getState().resetViewSeq).toBe(1);
   });
 });

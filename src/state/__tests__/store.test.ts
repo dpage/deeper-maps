@@ -108,6 +108,8 @@ beforeEach(async () => {
     baseLayer: 'osm',
     viewMode: '2d',
     verticalExaggeration: 6,
+    viewPitch: 55,
+    resetViewSeq: 0,
     frameRequestSeq: 0,
   });
   __resetDebounceTimer();
@@ -484,7 +486,7 @@ describe('useDeeperMapsStore', () => {
 
     // Above the ceiling clamps down; below the floor clamps up.
     useDeeperMapsStore.getState().setVerticalExaggeration(999);
-    expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(30);
+    expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(20);
 
     useDeeperMapsStore.getState().setVerticalExaggeration(-5);
     expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(1);
@@ -492,6 +494,27 @@ describe('useDeeperMapsStore', () => {
     // A non-finite value falls back to the default.
     useDeeperMapsStore.getState().setVerticalExaggeration(Number.NaN);
     expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(6);
+  });
+
+  it('setViewPitch clamps to the supported tilt range', () => {
+    useDeeperMapsStore.getState().setViewPitch(40);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(40);
+
+    useDeeperMapsStore.getState().setViewPitch(200);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(80);
+
+    useDeeperMapsStore.getState().setViewPitch(-10);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(0);
+
+    useDeeperMapsStore.getState().setViewPitch(Number.NaN);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(55);
+  });
+
+  it('resetView bumps resetViewSeq and restores the default tilt', () => {
+    useDeeperMapsStore.setState({ resetViewSeq: 3, viewPitch: 12 });
+    useDeeperMapsStore.getState().resetView();
+    expect(useDeeperMapsStore.getState().resetViewSeq).toBe(4);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(55);
   });
 
   it('setViewMode / setVerticalExaggeration do not throw when localStorage throws', () => {
@@ -955,7 +978,7 @@ describe('useDeeperMapsStore — viewMode & exaggeration persistence', () => {
   it('clamps an out-of-range stored exaggeration on init', async () => {
     globalThis.localStorage?.setItem('deeper-maps:verticalExaggeration', '9999');
     const mod = await import('../store');
-    expect(mod.useDeeperMapsStore.getState().verticalExaggeration).toBe(30);
+    expect(mod.useDeeperMapsStore.getState().verticalExaggeration).toBe(20);
   });
 
   it('defaults exaggeration when no value is stored', async () => {

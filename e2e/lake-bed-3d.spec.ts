@@ -34,14 +34,15 @@ test('switch to the 3D lake-bed view → surface renders, exaggeration tunes', a
   await page.getByRole('button', { name: /save\s*&\s*analyse|save/i }).click();
   await expect(page.getByText(/depth:/i)).toBeVisible({ timeout: 30000 });
 
-  // Switch the view-mode selector from "2D map" to "3D lake bed".
-  await page.getByRole('combobox').filter({ hasText: '2D map' }).click();
-  await page.getByRole('option', { name: /3D lake bed/i }).click();
+  // Switch the combined View selector from "2D OpenStreetMap" to "3D Model".
+  await page.getByRole('combobox').filter({ hasText: '2D OpenStreetMap' }).click();
+  await page.getByRole('option', { name: /3D Model/i }).click();
 
   // The 3D controls appear only when a depth grid is present and the layer is up.
   const slider = page.getByRole('slider', { name: /vertical exaggeration/i });
   await expect(slider).toBeVisible();
-  await expect(page.getByText(/tilt & rotate/i)).toBeVisible();
+  await expect(page.getByRole('slider', { name: /camera tilt/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /reset view/i })).toBeVisible();
 
   // Give the GL layer a couple of frames to build the mesh and draw.
   await page.waitForTimeout(500);
@@ -52,13 +53,21 @@ test('switch to the 3D lake-bed view → surface renders, exaggeration tunes', a
   await expect(page.getByText(/Vertical exaggeration ×9/i)).toBeVisible();
   await page.waitForTimeout(300);
 
+  // Tilt via the slider and reset — exercises the camera-control paths.
+  const tilt = page.getByRole('slider', { name: /camera tilt/i });
+  await tilt.focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(200);
+  await page.getByRole('button', { name: /reset view/i }).click();
+  await page.waitForTimeout(400);
+
   // The map canvas is still present and nothing threw during the 3D render.
   await expect(page.locator('canvas.maplibregl-canvas')).toBeVisible();
   expect(errors, `unexpected errors: ${errors.join('\n')}`).toEqual([]);
 
   // Switch back to 2D — the 3D controls tear down, the depth legend returns.
-  await page.getByRole('combobox').filter({ hasText: '3D lake bed' }).click();
-  await page.getByRole('option', { name: /2D map/i }).click();
+  await page.getByRole('combobox').filter({ hasText: '3D Model' }).click();
+  await page.getByRole('option', { name: /2D OpenStreetMap/i }).click();
   await expect(slider).toBeHidden();
   await expect(page.getByText(/depth:/i)).toBeVisible();
 });

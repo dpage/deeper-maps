@@ -120,10 +120,6 @@ const ALL_OVERLAY_LAYER_IDS = [
   SWEET_SPOTS_LAYER_ID,
 ];
 
-// Camera pitch (degrees) the map eases to when entering the 3D view, so the
-// lake bed reads as a surface without the user having to tilt manually.
-const VIEW_3D_PITCH = 60;
-
 /**
  * Apply the given scan's layerVisibility flags to all overlay layers.
  *
@@ -240,6 +236,8 @@ export function MapView(): JSX.Element {
   const baseLayer = useDeeperMapsStore((s) => s.baseLayer);
   const viewMode = useDeeperMapsStore((s) => s.viewMode);
   const verticalExaggeration = useDeeperMapsStore((s) => s.verticalExaggeration);
+  const viewPitch = useDeeperMapsStore((s) => s.viewPitch);
+  const resetViewSeq = useDeeperMapsStore((s) => s.resetViewSeq);
   const frameRequestSeq = useDeeperMapsStore((s) => s.frameRequestSeq);
 
   // The store bumps `frameRequestSeq` every time the user picks a scan
@@ -467,6 +465,9 @@ export function MapView(): JSX.Element {
       style: styleFor(initialBase),
       center: [-1.43, 51.74],
       zoom: 14,
+      // Allow a steeper tilt than the 60° default so the 3D bed can be viewed
+      // closer to side-on.
+      maxPitch: 80,
       attributionControl: false,
     });
     mapRef.current = map;
@@ -478,6 +479,14 @@ export function MapView(): JSX.Element {
     // finishes panning/zooming. Registered once; the handler reads all inputs
     // fresh so it never goes stale. `map.remove()` tears the listener down.
     map.on('moveend', () => applySweetSpots(map));
+    // Keep the Tilt slider in sync when the user tilts by dragging: write the
+    // settled pitch back to the store (guarded so our own easeTo doesn't loop).
+    map.on('pitchend', () => {
+      const snapshot = useDeeperMapsStore.getState();
+      if (snapshot.viewMode !== '3d') return;
+      const actual = Math.round(map.getPitch());
+      if (Math.abs(actual - snapshot.viewPitch) > 0.5) snapshot.setViewPitch(actual);
+    });
     // Click-to-inspect: open/replace/close the spot info popup.
     map.on('click', (e) => handleMapClick(map, e));
     return () => {
@@ -589,7 +598,9 @@ export function MapView(): JSX.Element {
     const apply = (): void => {
       syncView(map);
       if (lastPitchModeRef.current !== viewMode) {
-        map.easeTo({ pitch: viewMode === '3d' ? VIEW_3D_PITCH : 0, duration: 600 });
+        // Entering 3D tilts to the current slider pitch; leaving levels the map.
+        const nextPitch = viewMode === '3d' ? useDeeperMapsStore.getState().viewPitch : 0;
+        map.easeTo({ pitch: nextPitch, duration: 600 });
         lastPitchModeRef.current = viewMode;
       }
     };
@@ -599,6 +610,42 @@ export function MapView(): JSX.Element {
       void map.once('style.load', apply);
     }
   }, [viewMode]);
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  // Tilt slider → camera. Only in 3D, and only when the map isn't already at
+  // that pitch (a drag-tilt writes the store via `pitchend`, which would
+  // otherwise bounce back through here).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || viewMode !== '3d') return;
+    if (Math.abs(map.getPitch() - viewPitch) > 0.5) {
+      map.easeTo({ pitch: viewPitch, duration: 200 });
+    }
+  }, [viewPitch, viewMode]);
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  // Reset view: re-frame the active scan and level the camera (bearing north,
+  // pitch to the mode default). Skips the initial mount (seq 0).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || resetViewSeq === 0) return;
+    const snapshot = useDeeperMapsStore.getState();
+    const bundle = snapshot.layerBundle;
+    if (bundle?.bounds) {
+      map.fitBounds([bundle.bounds.sw, bundle.bounds.ne], {
+        padding: 40,
+        maxZoom: 16,
+        duration: 600,
+      });
+    }
+    map.easeTo({
+      pitch: snapshot.viewMode === '3d' ? snapshot.viewPitch : 0,
+      bearing: 0,
+      duration: 600,
+    });
+  }, [resetViewSeq]);
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */

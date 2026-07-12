@@ -2,9 +2,8 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { AppBar, Box, IconButton, Stack, Toolbar, Typography } from '@mui/material';
 import { useState } from 'react';
 import type { BaseLayerId, ViewMode } from '../storage/types';
-import { BaseLayerSelect } from './BaseLayerSelect';
 import { HelpDialog } from './HelpDialog';
-import { ViewModeSelect } from './ViewModeSelect';
+import { ViewSelect } from './ViewSelect';
 
 export interface AppHeaderProps {
   baseLayer: BaseLayerId;
@@ -28,8 +27,12 @@ export function AppHeader({
             Deeper Maps
           </Typography>
           <Stack direction="row" spacing={1} alignItems="center">
-            <ViewModeSelect value={viewMode} onChange={onViewModeChange} />
-            <BaseLayerSelect value={baseLayer} onChange={onBaseLayerChange} />
+            <ViewSelect
+              viewMode={viewMode}
+              baseLayer={baseLayer}
+              onViewModeChange={onViewModeChange}
+              onBaseLayerChange={onBaseLayerChange}
+            />
             <IconButton aria-label="Help" onClick={() => setHelpOpen(true)}>
               <HelpOutlineIcon />
             </IconButton>

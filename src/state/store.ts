@@ -79,10 +79,20 @@ function persistBaseLayer(base: BaseLayerId): void {
 const VIEW_MODE_KEY = 'deeper-maps:viewMode';
 const EXAGGERATION_KEY = 'deeper-maps:verticalExaggeration';
 
-/** Clamp range for the 3D vertical-exaggeration control (matches the slider). */
+/**
+ * Clamp range for the 3D vertical-exaggeration control (matches the slider).
+ * Capped at 20: beyond that the deepest relief drops far enough below the map
+ * plane to fall outside the map's view frustum at closer zooms, which clips
+ * parts of the surface away.
+ */
 export const MIN_VERTICAL_EXAGGERATION = 1;
-export const MAX_VERTICAL_EXAGGERATION = 30;
+export const MAX_VERTICAL_EXAGGERATION = 20;
 export const DEFAULT_VERTICAL_EXAGGERATION = 6;
+
+/** Clamp range + default for the 3D camera tilt (degrees). */
+export const MIN_VIEW_PITCH = 0;
+export const MAX_VIEW_PITCH = 80;
+export const DEFAULT_VIEW_PITCH = 55;
 
 function loadViewMode(): ViewMode {
   try {
@@ -124,6 +134,11 @@ function persistExaggeration(value: number): void {
   }
 }
 
+function clampPitch(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_VIEW_PITCH;
+  return Math.min(MAX_VIEW_PITCH, Math.max(MIN_VIEW_PITCH, value));
+}
+
 export interface DeeperMapsState {
   scans: Record<string, StoredScan>;
   activeScanId: string | null;
@@ -147,6 +162,19 @@ export interface DeeperMapsState {
    * [{@link MIN_VERTICAL_EXAGGERATION}, {@link MAX_VERTICAL_EXAGGERATION}].
    */
   verticalExaggeration: number;
+  /**
+   * Current 3D camera tilt in degrees. Two-way bound with the map: the Tilt
+   * slider writes it (the map eases to match), and the map writes it back after
+   * a drag-tilt so the slider stays in sync. Not persisted — a transient camera
+   * setting. Clamped to [{@link MIN_VIEW_PITCH}, {@link MAX_VIEW_PITCH}].
+   */
+  viewPitch: number;
+  /**
+   * Monotonic counter bumped by {@link resetView}. MapView observes it and
+   * re-frames the scan and levels the camera (pitch to the mode default,
+   * bearing to north) — the "reset pan/tilt/zoom" affordance.
+   */
+  resetViewSeq: number;
   /**
    * Monotonic counter that increments every time the user explicitly requests a
    * scan be (re)framed — i.e. every `setActiveScan` and `saveAndAnalyse` call,
@@ -178,6 +206,10 @@ export interface DeeperMapsState {
   setViewMode: (mode: ViewMode) => void;
   /** Set the 3D vertical exaggeration (clamped to the supported range). */
   setVerticalExaggeration: (value: number) => void;
+  /** Set the 3D camera tilt in degrees (clamped to the supported range). */
+  setViewPitch: (value: number) => void;
+  /** Re-frame the active scan and level the camera (reset pan/tilt/zoom). */
+  resetView: () => void;
   renameScan: (scanId: string, name: string) => Promise<void>;
   deleteScan: (scanId: string) => Promise<void>;
   /**
@@ -420,6 +452,8 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     baseLayer: loadBaseLayer(),
     viewMode: loadViewMode(),
     verticalExaggeration: loadExaggeration(),
+    viewPitch: DEFAULT_VIEW_PITCH,
+    resetViewSeq: 0,
     frameRequestSeq: 0,
 
     async hydrate() {
@@ -589,6 +623,14 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
       const next = clampExaggeration(value);
       set({ verticalExaggeration: next });
       persistExaggeration(next);
+    },
+
+    setViewPitch(value) {
+      set({ viewPitch: clampPitch(value) });
+    },
+
+    resetView() {
+      set((s) => ({ resetViewSeq: s.resetViewSeq + 1, viewPitch: DEFAULT_VIEW_PITCH }));
     },
 
     async renameScan(scanId, name) {

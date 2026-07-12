@@ -24,6 +24,7 @@ beforeEach(async () => {
     progress: null,
     warnings: [],
     baseLayer: 'osm',
+    viewMode: '2d',
   });
 });
 
@@ -57,47 +58,40 @@ describe('<App/>', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
-  // Coverage extension: changing the base layer dispatches the global
-  // (no-scanId) setBaseLayer on the store. baseLayer is now an app-level
-  // preference that lives outside StoredScan.
-  it('changing the base layer dispatches setBaseLayer with the new global value', async () => {
+  // Coverage extension: picking a 2D basemap from the combined View selector
+  // dispatches BOTH setBaseLayer and setViewMode on the store — the App wires
+  // the header's callbacks straight through.
+  it('choosing 2D Satellite dispatches setBaseLayer and setViewMode', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const setBaseLayerMock = vi.fn();
-    useDeeperMapsStore.setState({ setBaseLayer: setBaseLayerMock });
+    const setViewModeMock = vi.fn();
+    useDeeperMapsStore.setState({ setBaseLayer: setBaseLayerMock, setViewMode: setViewModeMock });
     render(<App />);
-    // Two selects now sit in the header (view mode + base layer); pick the base
-    // layer one by its rendered value.
-    const baseLayerCombo = screen
-      .getAllByRole('combobox')
-      .find((el) => /openstreetmap/i.test(el.textContent ?? ''));
-    await user.click(baseLayerCombo!);
-    await user.click(screen.getByRole('option', { name: /satellite/i }));
+    await user.click(screen.getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: /2D Satellite/i }));
     expect(setBaseLayerMock).toHaveBeenCalledWith('satellite');
+    expect(setViewModeMock).toHaveBeenCalledWith('2d');
   });
 
-  // Coverage extension: switching the view mode dispatches setViewMode on the
-  // store — the App wires the header's onViewModeChange straight through.
-  it('changing the view mode dispatches setViewMode with the new value', async () => {
+  // Switching to the 3D model dispatches setViewMode without touching baseLayer.
+  it('choosing 3D Model dispatches setViewMode to 3d', async () => {
     const user = (await import('@testing-library/user-event')).default.setup();
     const setViewModeMock = vi.fn();
     useDeeperMapsStore.setState({ setViewMode: setViewModeMock });
     render(<App />);
-    const viewModeCombo = screen
-      .getAllByRole('combobox')
-      .find((el) => /2D map/i.test(el.textContent ?? ''));
-    await user.click(viewModeCombo!);
-    await user.click(screen.getByRole('option', { name: /3D lake bed/i }));
+    await user.click(screen.getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: /3D Model/i }));
     expect(setViewModeMock).toHaveBeenCalledWith('3d');
   });
 
   // The header reflects the current global baseLayer regardless of whether a
   // scan is active. Pre-populate the store with `satellite` and assert the
-  // BaseLayerSelect shows it.
+  // combined selector shows it.
   it('reflects the global baseLayer in the header when no scan is active', () => {
-    useDeeperMapsStore.setState({ baseLayer: 'satellite' });
+    useDeeperMapsStore.setState({ baseLayer: 'satellite', viewMode: '2d' });
     render(<App />);
-    // The BaseLayerSelect is a MUI Select that renders its value as visible
-    // text; querying by the rendered "Satellite" label is the cleanest signal.
-    expect(screen.getByText(/satellite/i)).toBeInTheDocument();
+    // The View selector renders its value as visible text; querying by the
+    // rendered "2D Satellite" label is the cleanest signal.
+    expect(screen.getByText(/2D Satellite/i)).toBeInTheDocument();
   });
 });

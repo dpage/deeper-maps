@@ -22,7 +22,7 @@ describe('<AppHeader/>', () => {
     await user.click(screen.getByRole('button', { name: /close/i }));
   });
 
-  it('renders the view-mode selector and reports a change to 3D', async () => {
+  it('renders the combined view selector and reports a switch to 3D', async () => {
     const user = userEvent.setup();
     const onViewModeChange = vi.fn();
     render(
@@ -33,11 +33,8 @@ describe('<AppHeader/>', () => {
         onViewModeChange={onViewModeChange}
       />,
     );
-    const viewModeCombo = screen
-      .getAllByRole('combobox')
-      .find((el) => /2D map/i.test(el.textContent ?? ''));
-    await user.click(viewModeCombo!);
-    await user.click(screen.getByRole('option', { name: /3D lake bed/i }));
+    await user.click(screen.getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: /3D Model/i }));
     expect(onViewModeChange).toHaveBeenCalledWith('3d');
   });
 });

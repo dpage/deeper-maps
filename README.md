@@ -16,7 +16,7 @@ Open `index.html` in a browser to use it. No installation, no server, no account
   - Weed cover (Greens)
   - Fish density graduated circles (YlOrRd, sized by sample count)
   - Sweet spots — Gold / Silver / Bronze / Weeded categorical markers
-- 3D lake-bed view — switch the header's **View** selector to render the scan as an explorable, depth-coloured 3D surface (tilt/rotate to fly around it; adjustable vertical exaggeration). Built from the same interpolated depth grid as the contours, drawn in the map's own WebGL context — no extra dependencies.
+- 3D lake-bed view — the header's **View** selector (3D Model / 2D OpenStreetMap / 2D Satellite) renders the scan as an explorable, depth-coloured 3D surface with Tilt / Vertical-exaggeration sliders and a Reset-view button. Built from the same interpolated depth grid as the contours, drawn in the map's own WebGL context — no extra dependencies.
 - Threshold sliders with calibrated defaults; tweak any parameter, see the map update in seconds.
 - Scans library backed by IndexedDB — your scans persist across sessions.
 - Merge a re-visited lake's later exports into one scan, and export any scan (merged or not) back to the import zip format to share with others — both from the scan's kebab menu.

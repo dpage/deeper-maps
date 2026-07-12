@@ -18,7 +18,7 @@ const VERTEX_SRC = `
 precision highp float;
 uniform mat4 u_matrix;     // camera matrix pre-multiplied by the reference translation
 uniform float u_exaggeration;
-uniform float u_depthBase;  // shallowest depth in the mesh — anchors the surface at z=0
+uniform float u_depthBase;  // mid-depth of the mesh — centres the relief on z=0
 uniform vec3 u_lightDir;
 uniform float u_ambient;
 attribute vec2 a_pos;      // mercator x, y RELATIVE to the reference point
@@ -29,11 +29,11 @@ attribute vec3 a_color;    // 0..1 rgb
 varying vec3 v_color;
 varying float v_shade;
 void main() {
-  // Anchor the shallowest point at the water surface and drop by the RELIEF
-  // (depth - shallowest), not the absolute depth — otherwise the whole bed
-  // hangs a flat u_depthBase*exaggeration below the map and parallax-slides off
-  // the lake outline under tilt. altitude (metres) → mercator z via a_mpm.
-  float z = a_mpm * (-(a_depth - u_depthBase)) * u_exaggeration;
+  // Centre the relief on the map plane: altitude = (midDepth - depth) *
+  // exaggeration, so shallower-than-mid rises above z=0 and deeper sinks below.
+  // Halves the vertical extent (less frustum clipping) and keeps the model on
+  // its true map footprint. altitude (metres) → mercator z via a_mpm.
+  float z = a_mpm * (u_depthBase - a_depth) * u_exaggeration;
   gl_Position = u_matrix * vec4(a_pos, z, 1.0);
   // Reconstruct the exaggerated surface normal from the slope so shading
   // tracks the exaggeration slider without re-uploading geometry.
@@ -177,7 +177,13 @@ export class LakeBed3DLayer implements CustomLayerInterface {
     }
 
     const { mesh } = this;
-    this.depthBase = mesh.depthRange.min;
+    // Centre the relief on the map plane: the mid-depth sits at z=0, shallower
+    // areas rise above it and deeper areas sink below. This halves the vertical
+    // extent versus hanging everything below the surface, so far fewer deep
+    // triangles fall outside the map's view frustum (which clipped them away at
+    // high exaggeration / close zoom), and it keeps the model centred on its
+    // real map footprint.
+    this.depthBase = (mesh.depthRange.min + mesh.depthRange.max) / 2;
     if (mesh.vertexCount === 0) return;
 
     // Project each vertex's lon/lat to mercator, then store positions RELATIVE
