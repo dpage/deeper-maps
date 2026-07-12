@@ -6,9 +6,10 @@ import type { Feature, Point } from 'geojson';
  */
 export interface SpotProperties {
   depth_m: number;
-  mean_weed: number;
-  fish_rate: number;
   n_pings: number;
+  // Sonar-derived; absent on depth/temperature-only (mobile) scans.
+  mean_weed?: number;
+  fish_rate?: number;
   bottom_hardness?: number;
   temp_c?: number;
   category?: string;
@@ -119,8 +120,10 @@ export function formatSpotPopupHtml(
   if (scanned) rows.push(['Scanned', scanned]);
   rows.push(['Depth', `${props.depth_m.toFixed(1)} m`]);
   if (props.temp_c !== undefined) rows.push(['Water temp', `${props.temp_c.toFixed(1)} °C`]);
-  rows.push(['Weed', `${props.mean_weed.toFixed(2)} m`]);
-  rows.push(['Fish rate', `${Math.round(props.fish_rate * 100)}%`]);
+  if (props.mean_weed !== undefined) rows.push(['Weed', `${props.mean_weed.toFixed(2)} m`]);
+  if (props.fish_rate !== undefined) {
+    rows.push(['Fish rate', `${Math.round(props.fish_rate * 100)}%`]);
+  }
   rows.push(['Samples', String(props.n_pings)]);
   const label = props.category ? CATEGORY_LABELS[props.category] : undefined;
   if (label) rows.push(['Sweet spot', label]);

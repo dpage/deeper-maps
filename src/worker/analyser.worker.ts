@@ -1,5 +1,5 @@
 import { parseQuestUpload } from '../analysis/parsers/zip';
-import { aggregateCells } from '../analysis/pipeline/aggregateCells';
+import { aggregateBathymetryCells, aggregateCells } from '../analysis/pipeline/aggregateCells';
 import { analysePings } from '../analysis/pipeline/analysePings';
 import { buildLayers } from '../analysis/pipeline/buildLayers';
 import { categoriseCells } from '../analysis/pipeline/categoriseCells';
@@ -37,6 +37,7 @@ const states = new Map<string, ScanState>();
 const memoCleanBath = memoizeStage(cleanBathymetry);
 const memoAnalysePings = memoizeStage(analysePings);
 const memoAggregateCells = memoizeStage(aggregateCells);
+const memoAggregateBathCells = memoizeStage(aggregateBathymetryCells);
 const memoCategoriseCells = memoizeStage(categoriseCells);
 const memoBuildLayers = memoizeStage(buildLayers);
 
@@ -137,15 +138,24 @@ function runPipeline(scanId: string, options: AnalyseRequest['options']): void {
   reportProgress(scanId, 'cleanBathymetry', 1, 1);
   checkCancelled();
 
+  // A scan with no sonar returns (a Deeper mobile export, or a Quest
+  // bathymetry.csv with no sonar.csv) runs a bathymetry-only path: cells are
+  // aggregated straight from the cleaned depth/temperature rows so the depth and
+  // temperature maps — and the click-to-inspect popup — still work.
+  const hasSonar = state.raw.sonar.length > 0;
+
   reportProgress(scanId, 'analysePings', 0, state.raw.sonar.length);
   const perPing = memoAnalysePings(state.raw.sonar, cleaned.rows, options.sonar);
   state.perPing = perPing;
   reportProgress(scanId, 'analysePings', state.raw.sonar.length, state.raw.sonar.length);
   checkCancelled();
 
-  reportProgress(scanId, 'aggregateCells', 0, perPing.rows.length);
-  const cells = memoAggregateCells(perPing, options.cell);
-  reportProgress(scanId, 'aggregateCells', perPing.rows.length, perPing.rows.length);
+  const cellInput = hasSonar ? perPing.rows.length : cleaned.rows.length;
+  reportProgress(scanId, 'aggregateCells', 0, cellInput);
+  const cells = hasSonar
+    ? memoAggregateCells(perPing, options.cell)
+    : memoAggregateBathCells(cleaned.rows, options.cell);
+  reportProgress(scanId, 'aggregateCells', cellInput, cellInput);
   checkCancelled();
 
   reportProgress(scanId, 'categoriseCells', 0, cells.rows.length);
@@ -155,7 +165,7 @@ function runPipeline(scanId: string, options: AnalyseRequest['options']): void {
   checkCancelled();
 
   reportProgress(scanId, 'buildLayers', 0, 1);
-  const bundle = memoBuildLayers(cleaned, categorised, options.colorScale);
+  const bundle = memoBuildLayers(cleaned, categorised, options.colorScale, hasSonar);
   reportProgress(scanId, 'buildLayers', 1, 1);
 
   post({ kind: 'layerBundle', scanId, bundle, warnings: state.warnings });

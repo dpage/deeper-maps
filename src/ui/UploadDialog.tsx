@@ -80,7 +80,7 @@ export function UploadDialog({ open, onClose }: UploadDialogProps): JSX.Element 
       const hash = await scanContentHash([{ fileName: file.name, bytes: buf }]);
       const scan: StoredScan = {
         id: crypto.randomUUID(),
-        name: file.name.replace(/\.zip$/i, ''),
+        name: file.name.replace(/\.(zip|csv)$/i, ''),
         deviceType: 'quest',
         contentHash: hash,
         createdAt: Date.now(),
@@ -109,12 +109,16 @@ export function UploadDialog({ open, onClose }: UploadDialogProps): JSX.Element 
       <DialogTitle>Upload scan</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary">
+            A Quest export (.zip) for the full analysis, or a Deeper mobile export (.csv) for a
+            depth &amp; temperature map.
+          </Typography>
           <Button variant="outlined" component="label" disabled={busy}>
             Choose file
             <input
               type="file"
               hidden
-              accept=".zip,application/zip"
+              accept=".zip,.csv,application/zip,text/csv"
               aria-label="upload"
               onChange={(e) => void handleFileChange(e)}
             />

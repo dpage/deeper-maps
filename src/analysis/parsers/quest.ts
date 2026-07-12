@@ -138,6 +138,121 @@ export function parseQuestBathymetry(bytes: Uint8Array, diagnostics: ParseDiagno
   return out;
 }
 
+/**
+ * Sniff whether a CSV is a Deeper mobile (iOS/Android app) "scan_data" export
+ * rather than a Quest desktop export. The mobile file leads with a header row
+ * — `latitude,longtitude,depth,temperature,time` (note Deeper's "longtitude"
+ * typo) — which the headerless Quest CSVs never have. We match on the presence
+ * of the `latitude`, `depth` and `time` column names so a future header tweak
+ * (or the typo being fixed) still routes correctly.
+ */
+export function looksLikeDeeperMobile(bytes: Uint8Array): boolean {
+  // Decode only the first line; the header is all we need.
+  let end = bytes.length;
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] === NEWLINE) {
+      end = i;
+      break;
+    }
+  }
+  const start = end >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? 3 : 0;
+  const header = new TextDecoder().decode(bytes.subarray(start, end)).toLowerCase();
+  const cols = header.split(',').map((c) => c.trim());
+  return cols.includes('latitude') && cols.includes('depth') && cols.includes('time');
+}
+
+/**
+ * Parse a Deeper mobile "scan_data" CSV into bathymetry rows. Columns are
+ * `latitude, longtitude, depth, temperature, time` (same order as a Quest
+ * 5-column export), but with two mobile-specific quirks handled here:
+ *
+ *  - A leading header row (skipped).
+ *  - GPS is logged only ~once per second, so most rows have BLANK lat/lon while
+ *    depth/temperature stream at a higher rate. Blank coordinates become the
+ *    (0, 0) "no fix" sentinel so `cleanBathymetry` interpolates them between the
+ *    surrounding fixes, exactly as it does for a Quest scan that dropped GPS.
+ *  - Temperature reads `0.0` on the GPS rows (the device doesn't sample it
+ *    then); that's a "no reading" sentinel, so a 0 temperature is treated as
+ *    absent rather than a real 0 °C that would drag the temperature scale down.
+ *
+ * There is no sonar in this export, so the scan runs in bathymetry-only mode
+ * (depth + temperature; no weed/fish/sweet-spots).
+ */
+export function parseDeeperMobileBathymetry(
+  bytes: Uint8Array,
+  diagnostics: ParseDiagnostics,
+): BathRow[] {
+  const out: BathRow[] = [];
+  let total = 0;
+  let malformed = 0;
+  let hasGps = false;
+
+  forEachCsvRow(bytes, (cols) => {
+    // Skip the header row wherever it appears (defensively, not just row 0).
+    if (cols[0]?.trim().toLowerCase() === 'latitude') return;
+    total++;
+    if (cols.length !== 5) {
+      malformed++;
+      return;
+    }
+    // Depth and timestamp are mandatory and must be finite.
+    if (cols[2]!.trim() === '' || cols[4]!.trim() === '') {
+      malformed++;
+      return;
+    }
+    const depth = Number(cols[2]);
+    const ts = Number(cols[4]);
+    if (!Number.isFinite(depth) || !Number.isFinite(ts)) {
+      malformed++;
+      return;
+    }
+    // Blank GPS → (0, 0) no-fix sentinel (interpolated downstream).
+    const latStr = cols[0]!.trim();
+    const lonStr = cols[1]!.trim();
+    const lat = latStr === '' ? 0 : Number(latStr);
+    const lon = lonStr === '' ? 0 : Number(lonStr);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      malformed++;
+      return;
+    }
+    const row: BathRow = { lat, lon, depth_m: depth, ts_ms: ts };
+    // Temperature 0.0 is the "no reading" sentinel; keep only real readings.
+    const tempStr = cols[3]!.trim();
+    if (tempStr !== '') {
+      const temp = Number(tempStr);
+      if (Number.isFinite(temp) && temp !== 0) row.temp_c = temp;
+    }
+    out.push(row);
+    if (lat !== 0 || lon !== 0) hasGps = true;
+  });
+
+  if (total === 0) {
+    throw new Error('parseDeeperMobileBathymetry: no rows found');
+  }
+  if (total < STUB_MIN_ROWS) {
+    throw new Error(`Stub file detected (${total} row). Skip and don't import.`);
+  }
+
+  diagnostics.totalRows = total;
+  diagnostics.malformedRowCount = malformed;
+
+  if (total >= MALFORMED_THRESHOLD_MIN_ROWS && malformed / total > MAX_MALFORMED_FRACTION) {
+    throw new Error(
+      `parseDeeperMobileBathymetry: malformed rows exceed ${(MAX_MALFORMED_FRACTION * 100).toFixed(0)}% ` +
+        `(${malformed} of ${total}).`,
+    );
+  }
+
+  if (out.length > 0 && !hasGps) {
+    throw new Error(
+      `No GPS coordinates found in this export. Without any GPS fixes the scan ` +
+        `cannot be plotted on a map.`,
+    );
+  }
+
+  return out;
+}
+
 export function parseQuestSonar(bytes: Uint8Array, diagnostics: ParseDiagnostics): SonarPing[] {
   const out: SonarPing[] = [];
   let total = 0;

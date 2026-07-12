@@ -9,7 +9,7 @@ Open `index.html` in a browser to use it. No installation, no server, no account
 
 ## Features
 
-- Upload a Deeper Quest scan zip — folder with `bathymetry.csv` + `sonar.csv`. Macos-zipped exports work too (resource forks ignored).
+- Upload a Deeper Quest scan zip — folder with `bathymetry.csv` + `sonar.csv`. Macos-zipped exports work too (resource forks ignored). The Deeper mobile app's single `scan_data_*.csv` export also works (depth + temperature map only — it carries no sonar).
 - All processing happens locally in a Web Worker; no data leaves your machine.
 - Four toggleable layers over a real-world map (OpenStreetMap or Esri satellite, no API keys):
   - Bathymetry filled contours (viridis_r — deeper = darker)

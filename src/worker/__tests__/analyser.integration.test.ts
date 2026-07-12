@@ -82,6 +82,45 @@ describe('analyser.worker integration', () => {
     });
   }, 30000);
 
+  it('analyses a Deeper mobile CSV (no sonar) into a depth + temperature bundle', async () => {
+    // A headered mobile-format grid: a depth gradient + varying temperature,
+    // GPS on every row. No sonar → bathymetry-only path in the worker.
+    // ~0.5 m point spacing over a ~15 m square so each 2 m cell holds well over
+    // minPingsPerCell points, with depth + temperature gradients across it.
+    const lines = ['latitude,longtitude,depth,temperature,time'];
+    let ts = 1783174168000;
+    for (let i = 0; i < 30; i++) {
+      for (let j = 0; j < 30; j++) {
+        const lat = 48.482 + i * 0.0000045;
+        const lon = 3.919 + j * 0.0000068;
+        const depth = 1 + i * 0.15;
+        const temp = 18 + j * 0.13;
+        lines.push(`${lat},${lon},${depth.toFixed(3)},${temp.toFixed(1)},${ts}`);
+        ts += 100;
+      }
+    }
+    const bytes = new TextEncoder().encode(lines.join('\n') + '\n');
+    await withWorker(async (worker) => {
+      send(worker, {
+        kind: 'analyse',
+        scanId: 'ios',
+        rawFiles: [{ fileName: 'scan_data_20260704160928.csv', bytes }],
+        options: DEFAULT_OPTIONS,
+      });
+      const result = await nextOf(worker, (m) => m.kind === 'layerBundle');
+      if (result.kind !== 'layerBundle') throw new Error('unreachable');
+      expect(result.bundle.scales.depth.max).toBeGreaterThan(0);
+      expect(result.bundle.temperature.features.length).toBeGreaterThan(0);
+      expect(result.bundle.spots?.features.length).toBeGreaterThan(0);
+      expect(result.bundle.tempStats?.min).toBeGreaterThan(0);
+      // Sonar-derived layers are suppressed.
+      expect(result.bundle.weed.features).toHaveLength(0);
+      expect(result.bundle.fishDensity.features).toHaveLength(0);
+      expect(result.bundle.sweetSpots.features).toHaveLength(0);
+      expect(result.warnings.some((w) => /no sonar data/i.test(w))).toBe(true);
+    });
+  }, 30000);
+
   it('emits progress messages for each pipeline stage', async () => {
     const bath = loadFixture();
     const sonar = new Uint8Array(

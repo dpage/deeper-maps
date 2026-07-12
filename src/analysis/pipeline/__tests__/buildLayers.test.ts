@@ -236,7 +236,7 @@ describe('buildLayers — sweet spot markers', () => {
         },
       ],
     };
-    const lb = buildLayers(emptyClean, cells, DEFAULT_COLOR_SCALE_OPTIONS);
+    const lb = buildLayers(emptyClean, cells, DEFAULT_COLOR_SCALE_OPTIONS, true);
     // Every cell becomes a spot — not only the categorised ones.
     expect(lb.spots?.features).toHaveLength(2);
     const gold = lb.spots?.features.find((f) => f.properties?.category === 'gold');
@@ -252,6 +252,41 @@ describe('buildLayers — sweet spot markers', () => {
     // A cell without temperature omits temp_c rather than carrying undefined.
     const plain = lb.spots?.features.find((f) => f.properties?.category === 'none');
     expect(plain?.properties && 'temp_c' in plain.properties).toBe(false);
+  });
+
+  it('suppresses weed/fish/sweet-spots and omits weed/fish from spots when hasSonar is false', () => {
+    const cells: CategorisedCells = {
+      cellSizeM: 2,
+      origin: { lat: 51.7, lon: -1.43 },
+      rows: [
+        {
+          cx: 0,
+          cy: 0,
+          lat: 51.7,
+          lon: -1.43,
+          n_pings: 5,
+          mean_depth: 2.5,
+          mean_weed: 0,
+          fish_rate: 0,
+          bottom_hardness: 0,
+          mean_temp_c: 18.3,
+          t_start_ms: 1000,
+          t_end_ms: 2000,
+          category: 'none',
+        },
+      ],
+    };
+    const lb = buildLayers(emptyClean, cells, DEFAULT_COLOR_SCALE_OPTIONS, false);
+    expect(lb.weed.features).toHaveLength(0);
+    expect(lb.fishDensity.features).toHaveLength(0);
+    expect(lb.sweetSpots.features).toHaveLength(0);
+    // Spots still exist (depth + temp), but weed/fish are omitted — not shown as 0.
+    expect(lb.spots?.features).toHaveLength(1);
+    const props = lb.spots?.features[0]?.properties as Record<string, unknown> | undefined;
+    expect(props && 'depth_m' in props).toBe(true);
+    expect(props && 'temp_c' in props).toBe(true);
+    expect(props && 'mean_weed' in props).toBe(false);
+    expect(props && 'fish_rate' in props).toBe(false);
   });
 });
 

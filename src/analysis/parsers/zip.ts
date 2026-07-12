@@ -1,6 +1,12 @@
 import { unzipSync } from 'fflate';
 import type { RawScan, SourceFileMeta } from './types';
-import { parseQuestBathymetry, parseQuestSonar, type ParseDiagnostics } from './quest';
+import {
+  looksLikeDeeperMobile,
+  parseDeeperMobileBathymetry,
+  parseQuestBathymetry,
+  parseQuestSonar,
+  type ParseDiagnostics,
+} from './quest';
 
 export interface UploadFile {
   fileName: string;
@@ -51,6 +57,30 @@ export function expandZips(uploads: UploadFile[]): UploadFile[] {
   return out;
 }
 
+function parseDeeperMobileUpload(file: UploadFile): UploadResult {
+  const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+  const bathymetry = parseDeeperMobileBathymetry(file.bytes, diag);
+  const warnings: string[] = [];
+  if (diag.malformedRowCount > 0) {
+    warnings.push(
+      `${file.fileName}: skipped ${diag.malformedRowCount} of ${diag.totalRows} malformed rows`,
+    );
+  }
+  warnings.push(
+    'This Deeper mobile export has no sonar data — showing depth and temperature only ' +
+      '(weed, fish density and sweet spots need a Quest zip).',
+  );
+  return {
+    scan: {
+      device: 'quest',
+      bathymetry,
+      sonar: [],
+      source: [{ fileName: file.fileName, byteSize: file.bytes.length }],
+    },
+    warnings,
+  };
+}
+
 /**
  * Promise return is part of the public contract: Plan 2 dispatches this to a
  * Web Worker, at which point the body becomes genuinely async. Keeping the
@@ -59,6 +89,15 @@ export function expandZips(uploads: UploadFile[]): UploadFile[] {
 // eslint-disable-next-line @typescript-eslint/require-await
 export async function parseQuestUpload(uploads: UploadFile[]): Promise<UploadResult> {
   const expanded = expandZips(uploads);
+
+  // Deeper mobile "scan_data" export: a single headered CSV with depth +
+  // temperature + sparse GPS, no sonar. Detected by content (its header) rather
+  // than filename, since the app names it scan_data_<timestamp>.csv.
+  const mobile = expanded.find((f) => looksLikeDeeperMobile(f.bytes));
+  if (mobile) {
+    return parseDeeperMobileUpload(mobile);
+  }
+
   const recognised = expanded.filter((f) => RECOGNISED.has(f.fileName.toLowerCase()));
 
   const bathFile = recognised.find((f) => f.fileName.toLowerCase() === 'bathymetry.csv');

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseQuestBathymetry, parseQuestSonar, type ParseDiagnostics } from '../quest';
+import {
+  looksLikeDeeperMobile,
+  parseDeeperMobileBathymetry,
+  parseQuestBathymetry,
+  parseQuestSonar,
+  type ParseDiagnostics,
+} from '../quest';
 
 // The parsers consume raw file bytes (never a pre-decoded string) so that a
 // large scan is never materialised as one giant UTF-16 string. Tests author
@@ -207,5 +213,88 @@ describe('parseQuestSonar', () => {
   it('throws on an empty file (no rows)', () => {
     const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
     expect(() => parseQuestSonar(enc(''), diag)).toThrow(/no rows found/i);
+  });
+});
+
+const MOBILE_HEADER = 'latitude,longtitude,depth,temperature,time';
+const MOBILE_CSV = `${MOBILE_HEADER}
+48.4820,3.9191,3.028,0.0,1783174168000
+,,3.028,30.6,1783174168344
+,,3.070,30.6,1783174168684
+48.4821,3.9192,3.049,0.0,1783174169000
+,,3.049,30.8,1783174169500
+`;
+
+describe('looksLikeDeeperMobile', () => {
+  it('recognises the mobile header (incl. the "longtitude" typo)', () => {
+    expect(looksLikeDeeperMobile(enc(MOBILE_CSV))).toBe(true);
+    expect(looksLikeDeeperMobile(enc('latitude,longitude,depth,temperature,time\n1,2,3,4,5'))).toBe(
+      true,
+    );
+  });
+
+  it('rejects a headerless Quest CSV', () => {
+    expect(looksLikeDeeperMobile(enc(FIVE_COL))).toBe(false);
+  });
+
+  it('tolerates a UTF-8 BOM before the header', () => {
+    const withBom = new Uint8Array([0xef, 0xbb, 0xbf, ...enc(MOBILE_CSV)]);
+    expect(looksLikeDeeperMobile(withBom)).toBe(true);
+  });
+});
+
+describe('parseDeeperMobileBathymetry', () => {
+  it('parses depth/time, interpolates GPS sentinel, and drops the temp=0 sentinel', () => {
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const rows = parseDeeperMobileBathymetry(enc(MOBILE_CSV), diag);
+    // Header skipped → 5 data rows.
+    expect(rows).toHaveLength(5);
+    // GPS-fix row: coords kept, temp=0 dropped (undefined, not 0).
+    expect(rows[0]).toEqual({ lat: 48.482, lon: 3.9191, depth_m: 3.028, ts_ms: 1783174168000 });
+    expect(rows[0]?.temp_c).toBeUndefined();
+    // Blank-GPS row: coords become the (0,0) no-fix sentinel, real temp kept.
+    expect(rows[1]).toEqual({ lat: 0, lon: 0, depth_m: 3.028, temp_c: 30.6, ts_ms: 1783174168344 });
+    expect(diag.malformedRowCount).toBe(0);
+  });
+
+  it('counts a row with the wrong column count as malformed', () => {
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const csv = `${MOBILE_HEADER}
+48.48,3.91,3.0,0.0,1783174168000
+48.48,3.91,3.0,1783174168100
+,,3.1,30.6,1783174168344
+`;
+    const rows = parseDeeperMobileBathymetry(enc(csv), diag);
+    expect(rows).toHaveLength(2);
+    expect(diag.malformedRowCount).toBe(1);
+  });
+
+  it('rejects rows with blank depth or time', () => {
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const csv = `${MOBILE_HEADER}
+48.48,3.91,,0.0,1783174168000
+48.48,3.91,3.0,0.0,
+48.49,3.92,3.05,0.0,1783174168300
+,,3.1,30.6,1783174168344
+`;
+    const rows = parseDeeperMobileBathymetry(enc(csv), diag);
+    expect(rows).toHaveLength(2);
+    expect(diag.malformedRowCount).toBe(2);
+  });
+
+  it('throws when no row has a GPS fix', () => {
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    const csv = `${MOBILE_HEADER}
+,,3.0,30.6,1783174168000
+,,3.1,30.8,1783174168344
+`;
+    expect(() => parseDeeperMobileBathymetry(enc(csv), diag)).toThrow(/no gps/i);
+  });
+
+  it('throws on an empty (header-only) file', () => {
+    const diag: ParseDiagnostics = { malformedRowCount: 0, totalRows: 0, errors: [] };
+    expect(() => parseDeeperMobileBathymetry(enc(MOBILE_HEADER + '\n'), diag)).toThrow(
+      /no rows found/i,
+    );
   });
 });

@@ -129,4 +129,17 @@ describe('formatSpotPopupHtml', () => {
     const html = formatSpotPopupHtml(noTime, fmt);
     expect(html).not.toContain('Scanned');
   });
+
+  it('omits weed and fish rows for a depth/temperature-only (sonar-less) spot', () => {
+    const noSonar = { ...base };
+    delete noSonar.mean_weed;
+    delete noSonar.fish_rate;
+    const html = formatSpotPopupHtml(noSonar, fmt);
+    expect(html).not.toContain('Weed');
+    expect(html).not.toContain('Fish rate');
+    // Depth, temp and samples still show.
+    expect(html).toContain('Depth');
+    expect(html).toContain('Water temp');
+    expect(html).toContain('Samples');
+  });
 });

@@ -352,10 +352,10 @@ function computeBounds(clean: CleanBath): LayerBundle['bounds'] {
 interface SpotProps {
   category: ScanCategory;
   depth_m: number;
-  mean_weed: number;
-  fish_rate: number;
-  bottom_hardness: number;
   n_pings: number;
+  mean_weed?: number;
+  fish_rate?: number;
+  bottom_hardness?: number;
   temp_c?: number;
   t_start_ms?: number;
   t_end_ms?: number;
@@ -365,18 +365,22 @@ interface SpotProps {
  * One Point per aggregated cell, carrying that spot's full stats. Unlike
  * `sweetSpots` (only categorised cells) this includes every scanned cell, so
  * the click-to-inspect popup can report on anywhere the boat surveyed — not
- * just the highlighted sweet spots.
+ * just the highlighted sweet spots. When `hasSonar` is false (a depth/temp-only
+ * export) the weed / fish / hardness figures are meaningless and omitted, so the
+ * popup shows only what was actually measured.
  */
-function buildSpots(cells: CategorisedCells): FeatureCollection {
+function buildSpots(cells: CategorisedCells, hasSonar: boolean): FeatureCollection {
   const features: Feature<Point, SpotProps>[] = cells.rows.map((c) => {
     const props: SpotProps = {
       category: c.category,
       depth_m: c.mean_depth,
-      mean_weed: c.mean_weed,
-      fish_rate: c.fish_rate,
-      bottom_hardness: c.bottom_hardness,
       n_pings: c.n_pings,
     };
+    if (hasSonar) {
+      props.mean_weed = c.mean_weed;
+      props.fish_rate = c.fish_rate;
+      props.bottom_hardness = c.bottom_hardness;
+    }
     if (c.mean_temp_c !== undefined) props.temp_c = c.mean_temp_c;
     if (c.t_start_ms !== undefined) props.t_start_ms = c.t_start_ms;
     if (c.t_end_ms !== undefined) props.t_end_ms = c.t_end_ms;
@@ -408,10 +412,20 @@ function buildSweetSpots(cells: CategorisedCells): FeatureCollection {
   return { type: 'FeatureCollection', features };
 }
 
+const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] };
+
+/**
+ * @param hasSonar whether the scan carries raw sonar returns. When false (a
+ * Deeper mobile export, or a Quest bathymetry.csv with no sonar.csv) the
+ * weed / fish-density / sweet-spot layers are suppressed — they'd otherwise
+ * render as meaningless flat/empty overlays from zero-filled cells — while
+ * depth and temperature contours, and the click-to-inspect spots, still build.
+ */
 export function buildLayers(
   clean: CleanBath,
   cells: CategorisedCells,
   colorScale: ColorScaleOptions,
+  hasSonar = true,
 ): LayerBundle {
   const depths = clean.rows.map((r) => r.depth_m);
   const weeds = cells.rows.map((c) => c.mean_weed);
@@ -425,17 +439,16 @@ export function buildLayers(
     temperature: safeScale(temps, colorScale.outlierTrimPct, TEMPERATURE_CONTOUR_LEVELS),
   };
 
-  const weed = buildWeedContours(cells, scales.weed);
   const bathymetry = buildBathymetryContours(clean, scales.depth);
   const bathymetryLines = polygonsToLines(bathymetry);
 
   return {
     bathymetry,
-    weed,
+    weed: hasSonar ? buildWeedContours(cells, scales.weed) : EMPTY_FC,
     bathymetryLines,
-    fishDensity: buildFishDensity(cells),
-    sweetSpots: buildSweetSpots(cells),
-    spots: buildSpots(cells),
+    fishDensity: hasSonar ? buildFishDensity(cells) : EMPTY_FC,
+    sweetSpots: hasSonar ? buildSweetSpots(cells) : EMPTY_FC,
+    spots: buildSpots(cells, hasSonar),
     temperature: buildTemperatureContours(cells, scales.temperature),
     scales,
     bounds: computeBounds(clean),

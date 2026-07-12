@@ -101,6 +101,25 @@ describe('parseQuestUpload (zip)', () => {
     expect(r.scan.bathymetry).toHaveLength(50);
   });
 
+  it('routes a Deeper mobile scan_data CSV (header, blank GPS, temp sentinel) to bathymetry-only', async () => {
+    const csv =
+      'latitude,longtitude,depth,temperature,time\n' +
+      '48.4820,3.9191,3.028,0.0,1783174168000\n' +
+      ',,3.028,30.6,1783174168344\n' +
+      ',,3.070,30.6,1783174168684\n' +
+      '48.4821,3.9192,3.049,0.0,1783174169000\n' +
+      ',,3.049,30.8,1783174169500\n';
+    const result = await parseQuestUpload([
+      { fileName: 'scan_data_20260704160928.csv', bytes: new TextEncoder().encode(csv) },
+    ]);
+    expect(result.scan.bathymetry).toHaveLength(5);
+    expect(result.scan.sonar).toHaveLength(0);
+    // temp=0 sentinel dropped; real temps kept.
+    expect(result.scan.bathymetry[0]?.temp_c).toBeUndefined();
+    expect(result.scan.bathymetry[1]?.temp_c).toBe(30.6);
+    expect(result.warnings.some((w) => /no sonar data/i.test(w))).toBe(true);
+  });
+
   it('warns when a parser skips malformed rows', async () => {
     const lines: string[] = [];
     for (let i = 0; i < 50; i++) {
