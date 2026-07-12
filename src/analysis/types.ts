@@ -15,8 +15,12 @@ import type { FeatureCollection } from 'geojson';
  *   5 — adds quantile-based `levels` to LayerScales for non-linear colour mapping.
  *   6 — adds `temperature` field + `tempStats` (commit 99c17f8).
  *   7 — adds `spots` field (per-cell points for the click-to-inspect popup).
+ *   8 — no bundle shape change; bumped to force a re-analyse so the worker
+ *       repopulates each scan's persisted `hasSonar` flag (drives which layer
+ *       controls the UI enables). Scans analysed under v7 hit the cache and
+ *       would otherwise never report it.
  */
-export const CURRENT_BUNDLE_VERSION = 7;
+export const CURRENT_BUNDLE_VERSION = 8;
 
 export interface LiftoutOptions {
   hardThresholdM: number;

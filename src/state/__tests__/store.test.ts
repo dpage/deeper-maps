@@ -538,6 +538,7 @@ describe('useDeeperMapsStore — worker message routing', () => {
       scanId: ACTIVE_ID,
       bundle,
       warnings: ['heads up'],
+      hasSonar: true,
     });
 
     expect(useDeeperMapsStore.getState().layerBundle).toEqual(bundle);
@@ -550,6 +551,27 @@ describe('useDeeperMapsStore — worker message routing', () => {
     expect(cached?.bundle).toEqual(bundle);
   });
 
+  it('records hasSonar from the layerBundle onto the scan and persists it', async () => {
+    const scan = makeScan(ACTIVE_ID, 'A', 'hashA');
+    await saveScan(scan, []);
+    await useDeeperMapsStore.getState().hydrate();
+    useDeeperMapsStore.setState({ activeScanId: ACTIVE_ID });
+
+    deliverWorkerMessage({
+      kind: 'layerBundle',
+      scanId: ACTIVE_ID,
+      bundle: emptyBundle(),
+      warnings: [],
+      hasSonar: false,
+    });
+
+    expect(useDeeperMapsStore.getState().scans[ACTIVE_ID]?.hasSonar).toBe(false);
+    // Persisted so a later hydrate keeps it.
+    await new Promise<void>((r) => setTimeout(r, 0));
+    await useDeeperMapsStore.getState().hydrate();
+    expect(useDeeperMapsStore.getState().scans[ACTIVE_ID]?.hasSonar).toBe(false);
+  });
+
   it('saveScanResults stamps the current bundle version', async () => {
     const bundle = emptyBundle();
     useDeeperMapsStore.setState({ activeScanId: ACTIVE_ID });
@@ -559,6 +581,7 @@ describe('useDeeperMapsStore — worker message routing', () => {
       scanId: ACTIVE_ID,
       bundle,
       warnings: [],
+      hasSonar: true,
     });
 
     // Fire-and-forget IDB write; let it settle.
@@ -636,6 +659,7 @@ describe('useDeeperMapsStore — worker message routing', () => {
       scanId: bId,
       bundle: staleBundle,
       warnings: ['stale'],
+      hasSonar: true,
     });
 
     // Active scan's view is untouched.

@@ -308,6 +308,16 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         builtAt: Date.now(),
         bundle: m.bundle,
       });
+      // Record whether this scan has sonar-derived layers so the UI can disable
+      // the unsupported controls (weed / fish / sweet spots) for depth-only
+      // scans. Persist it as scan metadata — known immediately on the next
+      // select without waiting for a re-analysis.
+      const scan = get().scans[m.scanId];
+      if (scan && scan.hasSonar !== m.hasSonar) {
+        const updated: StoredScan = { ...scan, hasSonar: m.hasSonar };
+        set((s) => ({ scans: { ...s.scans, [m.scanId]: updated } }));
+        void persistScan(updated);
+      }
       if (isForActiveScan) {
         set({ layerBundle: m.bundle, progress: null, warnings: m.warnings });
       }
@@ -558,6 +568,9 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         // Append the merged source so fileMeta.length reflects how many exports
         // this scan is built from (surfaced in the library as "N scans merged").
         fileMeta: [...target.fileMeta, sourceMeta],
+        // The merged scan has sonar iff any contributing scan did. Set it now so
+        // the controls reflect the combined scan immediately, before re-analysis.
+        hasSonar: merged.sonar !== null,
       };
 
       await replaceScanAndRawFiles(updated, [

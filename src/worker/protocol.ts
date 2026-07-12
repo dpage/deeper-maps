@@ -46,6 +46,8 @@ export interface LayerBundleResponse {
   scanId: string;
   bundle: LayerBundle;
   warnings: string[];
+  /** Whether the scan had raw sonar returns (drives which controls the UI enables). */
+  hasSonar: boolean;
 }
 
 export interface ErrorResponse {

@@ -87,6 +87,7 @@ describe('worker protocol', () => {
         tempStats: null,
       },
       warnings: [],
+      hasSonar: true,
     };
     expect(r.kind).toBe('layerBundle');
   });
@@ -135,6 +136,7 @@ describe('worker protocol', () => {
           tempStats: null,
         },
         warnings: [],
+        hasSonar: false,
       },
       { kind: 'error', scanId: 'x', message: 'oops' },
       { kind: 'cancelled', scanId: 'x' },

@@ -79,6 +79,7 @@ describe('analyser.worker integration', () => {
       if (result.kind !== 'layerBundle') throw new Error('unreachable');
       expect(result.scanId).toBe('sx');
       expect(result.bundle.scales.depth.max).toBeGreaterThan(0);
+      expect(result.hasSonar).toBe(true);
     });
   }, 30000);
 
@@ -113,6 +114,7 @@ describe('analyser.worker integration', () => {
       expect(result.bundle.temperature.features.length).toBeGreaterThan(0);
       expect(result.bundle.spots?.features.length).toBeGreaterThan(0);
       expect(result.bundle.tempStats?.min).toBeGreaterThan(0);
+      expect(result.hasSonar).toBe(false);
       // Sonar-derived layers are suppressed.
       expect(result.bundle.weed.features).toHaveLength(0);
       expect(result.bundle.fishDensity.features).toHaveLength(0);

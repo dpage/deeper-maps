@@ -66,6 +66,12 @@ describe('<SweetSpotControls/>', () => {
     expect(screen.getByText('Max shown: 12')).toBeInTheDocument();
   });
 
+  it('disables the slider and explains why when the scan has no sonar', () => {
+    render(<SweetSpotControls scan={{ ...makeScan(12), hasSonar: false }} />);
+    expect(screen.getByRole('slider', { name: /max sweet spots shown/i })).toBeDisabled();
+    expect(screen.getByText(/not available/i)).toBeInTheDocument();
+  });
+
   it('invokes setMaxSweetSpots when the slider value changes', () => {
     const scan = makeScan(12);
     const spy = vi.spyOn(useDeeperMapsStore.getState(), 'setMaxSweetSpots').mockResolvedValue();

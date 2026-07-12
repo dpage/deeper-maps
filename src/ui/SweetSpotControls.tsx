@@ -17,23 +17,32 @@ export interface SweetSpotControlsProps {
 export function SweetSpotControls({ scan }: SweetSpotControlsProps): JSX.Element {
   const setMaxSweetSpots = useDeeperMapsStore((s) => s.setMaxSweetSpots);
   const value = scan.maxSweetSpots ?? DEFAULT_MAX_SWEET_SPOTS;
+  // Sweet spots are sonar-derived; disable the control for depth-only scans.
+  const disabled = scan.hasSonar === false;
 
   return (
     <Stack spacing={0.5}>
-      <Typography variant="subtitle2">Sweet spots</Typography>
-      <Typography variant="caption">{`Max shown: ${value}`}</Typography>
+      <Typography variant="subtitle2" color={disabled ? 'text.disabled' : 'text.primary'}>
+        Sweet spots
+      </Typography>
+      <Typography variant="caption" color={disabled ? 'text.disabled' : 'text.secondary'}>
+        {`Max shown: ${value}`}
+      </Typography>
       <Slider
         value={value}
         min={MIN_SPOTS}
         max={MAX_SPOTS}
         step={1}
         size="small"
+        disabled={disabled}
         aria-label="Max sweet spots shown"
         // Single-thumb slider: MapLibre always reports a plain number here.
         onChange={(_, v) => void setMaxSweetSpots(scan.id, v as number)}
       />
       <Typography variant="caption" color="text.secondary">
-        Shows the best spots in view.
+        {disabled
+          ? 'Not available — this scan has no sonar data.'
+          : 'Shows the best spots in view.'}
       </Typography>
     </Stack>
   );

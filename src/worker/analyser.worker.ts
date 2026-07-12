@@ -168,7 +168,7 @@ function runPipeline(scanId: string, options: AnalyseRequest['options']): void {
   const bundle = memoBuildLayers(cleaned, categorised, options.colorScale, hasSonar);
   reportProgress(scanId, 'buildLayers', 1, 1);
 
-  post({ kind: 'layerBundle', scanId, bundle, warnings: state.warnings });
+  post({ kind: 'layerBundle', scanId, bundle, warnings: state.warnings, hasSonar });
 }
 
 self.addEventListener('message', (e: MessageEvent<WorkerRequest>) => {

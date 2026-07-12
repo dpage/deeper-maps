@@ -111,4 +111,33 @@ describe('<LayerControls/>', () => {
     const toggle = screen.getByLabelText(/Temperature/i);
     expect(toggle).toBeInTheDocument();
   });
+
+  it('disables and unchecks the sonar-only layers when the scan has no sonar', () => {
+    const noSonar: StoredScan = {
+      ...SCAN,
+      hasSonar: false,
+      // Even though visibility flags say on, they render off + disabled.
+      layerVisibility: { ...SCAN.layerVisibility, weed: true, fishDensity: true, sweetSpots: true },
+    };
+    useDeeperMapsStore.setState({
+      layerBundle: makeBundle({ tempStats: { min: 12, mean: 14, max: 16 } }),
+    });
+    render(<LayerControls scan={noSonar} />);
+
+    for (const label of ['Weed', 'Fish density', 'Sweet spots']) {
+      const input = screen.getByLabelText(label);
+      expect(input).toBeDisabled();
+      expect(input).not.toBeChecked();
+    }
+    // Depth and temperature stay available.
+    expect(screen.getByLabelText('Bathymetry')).toBeEnabled();
+    expect(screen.getByLabelText(/Temperature/i)).toBeEnabled();
+    expect(screen.getByText(/need sonar data/i)).toBeInTheDocument();
+  });
+
+  it('keeps the sonar layers enabled when hasSonar is true or undefined', () => {
+    render(<LayerControls scan={{ ...SCAN, hasSonar: true }} />);
+    expect(screen.getByLabelText('Sweet spots')).toBeEnabled();
+    expect(screen.queryByText(/need sonar data/i)).toBeNull();
+  });
 });

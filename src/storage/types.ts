@@ -42,6 +42,15 @@ export interface StoredScan {
    * to {@link DEFAULT_MAX_SWEET_SPOTS} on hydrate.
    */
   maxSweetSpots?: number;
+  /**
+   * Whether the scan carries raw sonar returns. `false` for depth/temperature-
+   * only scans (a Deeper mobile export, or a Quest bathymetry.csv with no
+   * sonar.csv), where weed / fish-density / sweet-spot layers are unavailable —
+   * the UI disables those controls. Set from the analysis result (the worker
+   * knows definitively) and by the merge action. `undefined` on scans not yet
+   * (re-)analysed, treated as "supported" so nothing is disabled prematurely.
+   */
+  hasSonar?: boolean;
 }
 
 export interface StoredRawFile {
