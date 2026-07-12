@@ -175,6 +175,18 @@ export interface DeeperMapsState {
    */
   viewPitch: number;
   /**
+   * Current map bearing in degrees (0 = north up). MapView writes it as the map
+   * rotates; the compass widget reads it to show orientation. Applies to both
+   * the 2D and 3D views. Not persisted — a transient camera setting.
+   */
+  viewBearing: number;
+  /**
+   * Monotonic counter bumped by {@link resetNorth}. MapView observes it and
+   * eases the map back to north-up (bearing 0), leaving zoom, pitch and centre
+   * untouched — the compass's reset affordance.
+   */
+  resetNorthSeq: number;
+  /**
    * Monotonic counter bumped by {@link resetView}. MapView observes it and
    * re-frames the scan and levels the camera (pitch to the mode default,
    * bearing to north) — the "reset pan/tilt/zoom" affordance.
@@ -213,6 +225,10 @@ export interface DeeperMapsState {
   setVerticalExaggeration: (value: number) => void;
   /** Set the 3D camera tilt in degrees (clamped to the supported range). */
   setViewPitch: (value: number) => void;
+  /** Record the current map bearing (MapView → compass). */
+  setViewBearing: (value: number) => void;
+  /** Ease the map back to north-up without changing zoom/pitch/centre. */
+  resetNorth: () => void;
   /** Re-frame the active scan and level the camera (reset pan/tilt/zoom). */
   resetView: () => void;
   renameScan: (scanId: string, name: string) => Promise<void>;
@@ -458,6 +474,8 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     viewMode: loadViewMode(),
     verticalExaggeration: loadExaggeration(),
     viewPitch: DEFAULT_VIEW_PITCH,
+    viewBearing: 0,
+    resetNorthSeq: 0,
     resetViewSeq: 0,
     frameRequestSeq: 0,
 
@@ -632,6 +650,14 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
 
     setViewPitch(value) {
       set({ viewPitch: clampPitch(value) });
+    },
+
+    setViewBearing(value) {
+      set({ viewBearing: Number.isFinite(value) ? value : 0 });
+    },
+
+    resetNorth() {
+      set((s) => ({ resetNorthSeq: s.resetNorthSeq + 1 }));
     },
 
     resetView() {

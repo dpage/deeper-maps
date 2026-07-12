@@ -258,6 +258,7 @@ export function MapView(): JSX.Element {
   const verticalExaggeration = useDeeperMapsStore((s) => s.verticalExaggeration);
   const viewPitch = useDeeperMapsStore((s) => s.viewPitch);
   const resetViewSeq = useDeeperMapsStore((s) => s.resetViewSeq);
+  const resetNorthSeq = useDeeperMapsStore((s) => s.resetNorthSeq);
   const frameRequestSeq = useDeeperMapsStore((s) => s.frameRequestSeq);
 
   // The store bumps `frameRequestSeq` every time the user picks a scan
@@ -522,6 +523,8 @@ export function MapView(): JSX.Element {
       const actual = Math.round(map.getPitch());
       if (Math.abs(actual - snapshot.viewPitch) > 0.5) snapshot.setViewPitch(actual);
     });
+    // Feed the live bearing to the compass widget as the map rotates.
+    map.on('rotate', () => useDeeperMapsStore.getState().setViewBearing(map.getBearing()));
     // Click-to-inspect: open/replace/close the spot info popup.
     map.on('click', (e) => handleMapClick(map, e));
     return () => {
@@ -688,6 +691,15 @@ export function MapView(): JSX.Element {
       duration: 600,
     });
   }, [resetViewSeq]);
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  // Compass reset: ease to north-up, leaving zoom/pitch/centre as they are.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || resetNorthSeq === 0) return;
+    map.easeTo({ bearing: 0, duration: 400 });
+  }, [resetNorthSeq]);
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */

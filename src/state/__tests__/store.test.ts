@@ -109,6 +109,8 @@ beforeEach(async () => {
     viewMode: '2d',
     verticalExaggeration: 6,
     viewPitch: 55,
+    viewBearing: 0,
+    resetNorthSeq: 0,
     resetViewSeq: 0,
     frameRequestSeq: 0,
   });
@@ -516,6 +518,19 @@ describe('useDeeperMapsStore', () => {
     useDeeperMapsStore.getState().resetView();
     expect(useDeeperMapsStore.getState().resetViewSeq).toBe(4);
     expect(useDeeperMapsStore.getState().viewPitch).toBe(55);
+  });
+
+  it('setViewBearing records finite values and coerces non-finite to 0', () => {
+    useDeeperMapsStore.getState().setViewBearing(137.5);
+    expect(useDeeperMapsStore.getState().viewBearing).toBe(137.5);
+    useDeeperMapsStore.getState().setViewBearing(Number.NaN);
+    expect(useDeeperMapsStore.getState().viewBearing).toBe(0);
+  });
+
+  it('resetNorth bumps resetNorthSeq', () => {
+    useDeeperMapsStore.setState({ resetNorthSeq: 2 });
+    useDeeperMapsStore.getState().resetNorth();
+    expect(useDeeperMapsStore.getState().resetNorthSeq).toBe(3);
   });
 
   it('setViewMode / setVerticalExaggeration do not throw when localStorage throws', () => {

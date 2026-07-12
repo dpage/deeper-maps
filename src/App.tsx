@@ -6,6 +6,7 @@ import { ActiveScanPanel } from './ui/ActiveScanPanel';
 import { AppHeader } from './ui/AppHeader';
 import { CompletionToast } from './ui/CompletionToast';
 import { ErrorBoundary } from './ui/ErrorBoundary';
+import { Compass } from './ui/Compass';
 import { LakeBed3DControls } from './ui/LakeBed3DControls';
 import { Layout } from './ui/Layout';
 import { Legend } from './ui/Legend';
@@ -49,6 +50,7 @@ export function App(): JSX.Element {
           main={
             <>
               <MapView />
+              <Compass />
               <Legend />
               <LakeBed3DControls />
               <ProgressBanner />
