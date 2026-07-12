@@ -16,11 +16,12 @@ const AMBIENT = 0.7;
 
 const VERTEX_SRC = `
 precision highp float;
-uniform mat4 u_matrix;
+uniform mat4 u_matrix;     // camera matrix pre-multiplied by the reference translation
 uniform float u_exaggeration;
+uniform float u_depthBase;  // shallowest depth in the mesh — anchors the surface at z=0
 uniform vec3 u_lightDir;
 uniform float u_ambient;
-attribute vec2 a_pos;      // mercator x, y (surface)
+attribute vec2 a_pos;      // mercator x, y RELATIVE to the reference point
 attribute float a_depth;   // metres, positive down
 attribute float a_mpm;     // mercator units per metre at this latitude
 attribute vec2 a_slope;    // dh/dEast, dh/dNorth (h = -depth), metres/metre
@@ -28,9 +29,11 @@ attribute vec3 a_color;    // 0..1 rgb
 varying vec3 v_color;
 varying float v_shade;
 void main() {
-  // Bed sits below the surface: altitude = -depth * exaggeration (metres),
-  // converted to mercator z via the per-vertex metre factor.
-  float z = a_mpm * (-a_depth) * u_exaggeration;
+  // Anchor the shallowest point at the water surface and drop by the RELIEF
+  // (depth - shallowest), not the absolute depth — otherwise the whole bed
+  // hangs a flat u_depthBase*exaggeration below the map and parallax-slides off
+  // the lake outline under tilt. altitude (metres) → mercator z via a_mpm.
+  float z = a_mpm * (-(a_depth - u_depthBase)) * u_exaggeration;
   gl_Position = u_matrix * vec4(a_pos, z, 1.0);
   // Reconstruct the exaggerated surface normal from the slope so shading
   // tracks the exaggeration slider without re-uploading geometry.
@@ -92,6 +95,19 @@ export class LakeBed3DLayer implements CustomLayerInterface {
   private indexType = 0x1405; // gl.UNSIGNED_INT
   private locations: Record<string, number> = {};
   private uniforms: Record<string, WebGLUniformLocation | null> = {};
+  // Reference mercator point (the mesh centroid). Vertices are stored as
+  // offsets from it so their Float32 values stay near zero — full precision
+  // even when zoomed in — and the large offset is folded back into the camera
+  // matrix in Float64 on the CPU each frame (see render). Without this,
+  // absolute mercator coords (~0.5) in Float32 quantise at high zoom and the
+  // surface breaks into flickering stripes.
+  private refX = 0;
+  private refY = 0;
+  // Shallowest depth in the current mesh; anchors the surface at z=0.
+  private depthBase = 0;
+  // Scratch Float64 matrix reused each frame for the reference translation.
+  private readonly matrix64 = new Float64Array(16);
+  private readonly matrix32 = new Float32Array(16);
 
   constructor(mesh: LakeBedMesh, exaggeration = DEFAULT_VERTICAL_EXAGGERATION) {
     this.mesh = mesh;
@@ -134,7 +150,7 @@ export class LakeBed3DLayer implements CustomLayerInterface {
     for (const name of ['a_pos', 'a_depth', 'a_mpm', 'a_slope', 'a_color']) {
       this.locations[name] = gl.getAttribLocation(program, name);
     }
-    for (const name of ['u_matrix', 'u_exaggeration', 'u_lightDir', 'u_ambient']) {
+    for (const name of ['u_matrix', 'u_exaggeration', 'u_depthBase', 'u_lightDir', 'u_ambient']) {
       this.uniforms[name] = gl.getUniformLocation(program, name);
     }
 
@@ -161,20 +177,34 @@ export class LakeBed3DLayer implements CustomLayerInterface {
     }
 
     const { mesh } = this;
+    this.depthBase = mesh.depthRange.min;
     if (mesh.vertexCount === 0) return;
 
-    // Project each vertex's lon/lat to mercator x/y and record the per-vertex
-    // metre→mercator factor (latitude-dependent) so the shader can place depth.
+    // Project each vertex's lon/lat to mercator, then store positions RELATIVE
+    // to the mesh centroid (the reference point). Small offsets survive Float32
+    // at any zoom; the absolute reference is re-applied in Float64 per frame.
     const n = mesh.vertexCount;
-    const pos = new Float32Array(n * 2);
+    const mx = new Float64Array(n);
+    const my = new Float64Array(n);
     const mpm = new Float32Array(n);
+    let sumX = 0;
+    let sumY = 0;
     for (let i = 0; i < n; i++) {
       const lon = mesh.lngLat[i * 2]!;
       const lat = mesh.lngLat[i * 2 + 1]!;
       const merc = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon, lat }, 0);
-      pos[i * 2] = merc.x;
-      pos[i * 2 + 1] = merc.y;
+      mx[i] = merc.x;
+      my[i] = merc.y;
       mpm[i] = merc.meterInMercatorCoordinateUnits();
+      sumX += merc.x;
+      sumY += merc.y;
+    }
+    this.refX = sumX / n;
+    this.refY = sumY / n;
+    const pos = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      pos[i * 2] = mx[i]! - this.refX;
+      pos[i * 2 + 1] = my[i]! - this.refY;
     }
 
     const colorF = new Float32Array(n * 3);
@@ -209,8 +239,23 @@ export class LakeBed3DLayer implements CustomLayerInterface {
     if (!this.program || !this.indexBuffer || this.mesh.vertexCount === 0) return;
     gl.useProgram(this.program);
 
-    gl.uniformMatrix4fv(this.uniforms.u_matrix!, false, matrix as Float32Array);
+    // Fold the reference-point translation into the camera matrix in Float64:
+    // final = matrix · translate(refX, refY, 0). This puts the big-magnitude
+    // arithmetic (which would cancel catastrophically in Float32) on the CPU,
+    // so the GPU only ever multiplies small relative offsets. See refX/refY.
+    const m = matrix as unknown as ArrayLike<number>;
+    const out = this.matrix64;
+    for (let i = 0; i < 12; i++) out[i] = m[i]!;
+    // Translation column becomes matrix · [refX, refY, 0, 1].
+    out[12] = m[0]! * this.refX + m[4]! * this.refY + m[12]!;
+    out[13] = m[1]! * this.refX + m[5]! * this.refY + m[13]!;
+    out[14] = m[2]! * this.refX + m[6]! * this.refY + m[14]!;
+    out[15] = m[3]! * this.refX + m[7]! * this.refY + m[15]!;
+    for (let i = 0; i < 16; i++) this.matrix32[i] = out[i]!;
+
+    gl.uniformMatrix4fv(this.uniforms.u_matrix!, false, this.matrix32);
     gl.uniform1f(this.uniforms.u_exaggeration!, this.exaggeration);
+    gl.uniform1f(this.uniforms.u_depthBase!, this.depthBase);
     gl.uniform3fv(this.uniforms.u_lightDir!, LIGHT_DIR as unknown as Float32Array);
     gl.uniform1f(this.uniforms.u_ambient!, AMBIENT);
 
