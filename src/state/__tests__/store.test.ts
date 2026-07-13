@@ -13,6 +13,7 @@ import {
   __attachWorkerListener,
   __getWorkerErrorListener,
   __getWorkerMessageListener,
+  __markAnalysedInWorker,
   __resetDebounceTimer,
   useDeeperMapsStore,
 } from '../store';
@@ -344,6 +345,9 @@ describe('useDeeperMapsStore', () => {
     await saveScan(a, []);
     await useDeeperMapsStore.getState().hydrate();
 
+    // Pretend the worker has already analysed this scan so the fast recompute
+    // path is used (rather than a full re-analyse from raw files).
+    __markAnalysedInWorker(a.id);
     const post = getStubbedPostMessage();
     post.mockClear();
 
@@ -374,6 +378,27 @@ describe('useDeeperMapsStore', () => {
     // IDB microtasks that need real timers to settle. Allow them to drain
     // so afterEach's closeDeeperMapsDb doesn't race an in-flight transaction.
     await new Promise<void>((r) => setTimeout(r, 0));
+  });
+
+  it('updateThresholds re-analyses from raw when the worker has no state (cache-loaded scan)', async () => {
+    // A scan opened from the IndexedDB results cache was never analysed in the
+    // worker this session, so a recompute would fail — expect a full analyse.
+    const a = makeScan('cccccccc-cccc-cccc-cccc-cccccccccccc', 'C', 'hashC');
+    const blob = new NodeBlob([new Uint8Array([1, 2, 3])]) as unknown as Blob;
+    await saveScan(a, [{ fileName: 'bathymetry.csv', blob }]);
+    await useDeeperMapsStore.getState().hydrate();
+    // Active (so the reanalyse guard passes) with a bundle already shown, but
+    // NOT marked analysed-in-worker.
+    useDeeperMapsStore.setState({ activeScanId: a.id, layerBundle: emptyBundle() });
+
+    const post = getStubbedPostMessage();
+    post.mockClear();
+    useDeeperMapsStore.getState().updateThresholds(a.id, DEFAULT_THRESHOLDS);
+    // Wait out the 200 ms debounce plus the async raw-file load.
+    await new Promise<void>((r) => setTimeout(r, 400));
+
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post.mock.calls[0]?.[0]).toMatchObject({ kind: 'analyse', scanId: a.id });
   });
 
   it('updateThresholds is a no-op for an unknown scan id', () => {

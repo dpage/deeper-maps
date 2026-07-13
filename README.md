@@ -14,7 +14,7 @@ Open `index.html` in a browser to use it. No installation, no server, no account
 - Four toggleable layers over a real-world map (OpenStreetMap or Esri satellite, no API keys):
   - Bathymetry filled contours (viridis_r — deeper = darker)
   - Weed cover (Greens)
-  - Fish density graduated circles (YlOrRd, sized by sample count)
+  - Fish density heatmap (YlOrRd, weighted by fish rate — warm where fish concentrated)
   - Sweet spots — Gold / Silver / Bronze / Weeded categorical markers
 - 3D lake-bed view — the header's **View** selector (3D Model / 2D OpenStreetMap / 2D Satellite) renders the scan as an explorable, depth-coloured 3D surface with Tilt / Vertical-exaggeration sliders and a Reset-view button. Built from the same interpolated depth grid as the contours, drawn in the map's own WebGL context — no extra dependencies.
 - Threshold sliders with calibrated defaults; tweak any parameter, see the map update in seconds.

@@ -318,13 +318,29 @@ async function persistScan(scan: StoredScan): Promise<void> {
 // Module-scoped debounce timer. Reset between tests by `resetDebounceTimer`.
 let recomputeTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** @internal — test-only. Clears the in-flight threshold-debounce and watchdog timers. */
+// Scan ids the analyser worker has fully analysed this session (it holds their
+// parsed data in memory). A `recompute` only works for these — a scan loaded
+// straight from the IndexedDB results cache was never analysed here, so tweaking
+// its thresholds must re-run a full `analyse` from the raw files instead. The
+// entry is added when a worker-produced bundle lands (see the message listener),
+// NOT when a bundle is served from the cache.
+const analysedInWorker = new Set<string>();
+
+/** @internal — test-only. Marks a scan as analysed-in-worker, so a threshold
+ *  change takes the fast `recompute` path (as after a real analyse). */
+export function __markAnalysedInWorker(scanId: string): void {
+  analysedInWorker.add(scanId);
+}
+
+/** @internal — test-only. Clears the in-flight threshold-debounce and watchdog
+ *  timers, and the worker-analysed set, so state doesn't leak between tests. */
 export function __resetDebounceTimer(): void {
   if (recomputeTimer) {
     clearTimeout(recomputeTimer);
     recomputeTimer = null;
   }
   clearWatchdog();
+  analysedInWorker.clear();
 }
 
 // Module-scoped reference to the message listener so tests can subscribe a
@@ -378,6 +394,28 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     (watchdogTimer as { unref?: () => void }).unref?.();
   };
 
+  // Load a scan's stored raw files and dispatch a full `analyse` with the scan's
+  // current thresholds. Used when the worker has no in-memory state for the scan
+  // (it was served from the results cache this session) so a `recompute` can't
+  // run. Bails if the user navigates away mid-load.
+  const reanalyseFromRaw = async (scanId: string): Promise<void> => {
+    const raws = await loadScanRawFiles(scanId);
+    if (get().activeScanId !== scanId) return;
+    const rawBytes = await Promise.all(
+      raws.map(async (r) => ({
+        fileName: r.fileName,
+        bytes: new Uint8Array(await r.blob.arrayBuffer()),
+      })),
+    );
+    const scan = get().scans[scanId];
+    if (!scan || get().activeScanId !== scanId) return;
+    dispatchToWorker(
+      { kind: 'analyse', scanId, rawFiles: rawBytes, options: scan.thresholds },
+      rawBytes.map((r) => r.bytes.buffer),
+    );
+    armWatchdog(scanId);
+  };
+
   // A worker `error`/`messageerror`: surface it against the active scan so the
   // user sees *something* instead of a silent dead-end, and stop the watchdog.
   onWorkerErrorListener = () => {
@@ -416,6 +454,9 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
     }
 
     if (m.kind === 'layerBundle') {
+      // The worker produced this bundle, so it now holds this scan's parsed
+      // data — future threshold tweaks can use the fast `recompute` path.
+      analysedInWorker.add(m.scanId);
       // Cache the result regardless of whether the scan is still active —
       // the worker did the work; persist it so the user gets a fast cache-hit
       // when they navigate back.
@@ -603,8 +644,16 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
         if (!scan) return;
         // TODO(spec §8.3): handle QuotaExceededError on this IDB write.
         void persistScan(scan);
-        dispatchToWorker({ kind: 'recompute', scanId, options: thresholds });
-        armWatchdog(scanId);
+        if (analysedInWorker.has(scanId)) {
+          // Fast path: the worker still has this scan's parsed data.
+          dispatchToWorker({ kind: 'recompute', scanId, options: scan.thresholds });
+          armWatchdog(scanId);
+        } else {
+          // The scan was loaded from the results cache this session, so the
+          // worker has no parsed state — a recompute would error. Re-analyse
+          // from the raw files (which also primes the worker for later tweaks).
+          void reanalyseFromRaw(scanId);
+        }
       }, DEBOUNCE_MS);
     },
 
@@ -676,6 +725,7 @@ export const useDeeperMapsStore = create<DeeperMapsState>((set, get) => {
 
     async deleteScan(scanId) {
       await dbDeleteScan(scanId);
+      analysedInWorker.delete(scanId);
       set((s) => {
         const next = { ...s.scans };
         delete next[scanId];

@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react';
 import type { LayerBundle } from '../analysis/types';
 import { MIN_VIEW_PITCH, useDeeperMapsStore } from '../state/store';
 import { DEFAULT_MAX_SWEET_SPOTS, type BaseLayerId, type LayerVisibility } from '../storage/types';
-import { buildFishIcon } from './fishIcon';
 import {
   BATHYMETRY_LAYER_ID,
   BATHYMETRY_SOURCE_ID,
@@ -20,8 +19,7 @@ import {
 import {
   FISH_DENSITY_LAYER_ID,
   FISH_DENSITY_SOURCE_ID,
-  FISH_ICON_NAME,
-  buildFishDensityColorExpression,
+  buildFishDensityWeightExpression,
   buildFishDensityStyle,
 } from './layers/fishDensity';
 import {
@@ -212,8 +210,8 @@ function applyColorExpressions(map: MapLibreMap, bundle: LayerBundle): void {
   );
   map.setPaintProperty(
     FISH_DENSITY_LAYER_ID,
-    'icon-color',
-    buildFishDensityColorExpression(bundle.scales.fishRate),
+    'heatmap-weight',
+    buildFishDensityWeightExpression(bundle.scales.fishRate),
   );
 }
 
@@ -434,10 +432,6 @@ export function MapView(): JSX.Element {
     // custom 3D layer — forget the stale instance so syncView re-adds it.
     lakeBedLayerRef.current = null;
     meshBundleRef.current = null;
-    // Register the fish-icon SDF before the fish-density layer references it.
-    if (!map.hasImage(FISH_ICON_NAME)) {
-      map.addImage(FISH_ICON_NAME, buildFishIcon(), { sdf: true });
-    }
 
     const fallback = { min: 0, max: 1, levels: [] };
     // Layer order matters — `addLayer` appends, and later layers render on

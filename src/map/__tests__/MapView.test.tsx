@@ -135,18 +135,6 @@ describe('<MapView/>', () => {
     expect(sourceIds).toContain('sweet-spots');
   });
 
-  it("registers the fish-icon SDF image during the map's load handler", async () => {
-    const mock = await import('./__mocks__/maplibre-gl');
-    mock.__resetAll();
-
-    render(<MapView />);
-    await new Promise((r) => setTimeout(r, 5));
-
-    const fishIconCall = mock.__addImageCalls.find((c) => c.id === 'fish-icon');
-    expect(fishIconCall).toBeDefined();
-    expect(fishIconCall?.options?.sdf).toBe(true);
-  });
-
   it('fitBounds to the layerBundle bounds the first time a bundle lands for a scan', async () => {
     const mock = await import('./__mocks__/maplibre-gl');
     mock.__resetAll();
