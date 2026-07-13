@@ -73,7 +73,7 @@ const RASTER_SOURCE_MAX_ZOOM = 19;
 // lake-bed surface sits on. Always present in the style so hiding the raster
 // reveals it rather than the canvas clear colour.
 const BACKDROP_LAYER_ID = 'backdrop';
-const BACKDROP_COLOR = '#e8edf2';
+const BACKDROP_COLOR = '#ffffff';
 const BACKDROP_LAYER: maplibregl.LayerSpecification = {
   id: BACKDROP_LAYER_ID,
   type: 'background',

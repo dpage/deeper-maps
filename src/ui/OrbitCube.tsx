@@ -96,8 +96,10 @@ export function OrbitCube(): JSX.Element | null {
     }
   };
 
-  // The cube mirrors the camera: pitch tilts it forward, bearing spins it.
-  const cubeTransform = `rotateX(${pitch - 90}deg) rotateZ(${bearing}deg)`;
+  // The cube mirrors the camera: pitch tilts it forward (about the horizontal
+  // axis), bearing spins it about the vertical axis — so turning to face south
+  // actually brings the S face around, not just spins the N face in place.
+  const cubeTransform = `rotateX(${pitch - 90}deg) rotateY(${-bearing}deg)`;
 
   return (
     <Tooltip title="Drag to orbit · click to reset" placement="right">
@@ -108,9 +110,10 @@ export function OrbitCube(): JSX.Element | null {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         sx={{
+          // Sits just below the compass (top-left).
           position: 'absolute',
-          top: 16,
-          left: 16,
+          top: 64,
+          left: 4,
           width: 88,
           height: 88,
           display: 'flex',
