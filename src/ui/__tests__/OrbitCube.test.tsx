@@ -101,7 +101,7 @@ describe('<OrbitCube/>', () => {
     expect(useDeeperMapsStore.getState().viewPitch).toBe(44);
   });
 
-  it('a click (no drag) resets to the default north-facing view', () => {
+  it('a click off the faces resets to the default north-facing view', () => {
     useDeeperMapsStore.setState({
       viewMode: '3d',
       viewBearing: 140,
@@ -109,10 +109,42 @@ describe('<OrbitCube/>', () => {
       layerBundle: bundle(DEPTH_GRID),
     });
     render(<OrbitCube />);
+    // The outer handle (role=button) carries no data-face → treated as "off".
     const cube = screen.getByRole('button', { name: /orbit/i });
     fireEvent.pointerDown(cube, { pointerId: 1, clientX: 50, clientY: 50 });
     fireEvent.pointerUp(cube, { pointerId: 1, clientX: 50, clientY: 50 });
     expect(useDeeperMapsStore.getState().viewBearing).toBe(0);
     expect(useDeeperMapsStore.getState().viewPitch).toBe(55);
+  });
+
+  it('clicking a side face snaps to that elevation view', () => {
+    useDeeperMapsStore.setState({
+      viewMode: '3d',
+      viewBearing: 10,
+      viewPitch: 40,
+      layerBundle: bundle(DEPTH_GRID),
+    });
+    const { container } = render(<OrbitCube />);
+    const east = container.querySelector('[data-face="E"]')!;
+    fireEvent.pointerDown(east, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(east, { pointerId: 1, clientX: 50, clientY: 50 });
+    expect(useDeeperMapsStore.getState().viewBearing).toBe(90);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(70);
+  });
+
+  it('clicking the Top face looks down and keeps the current bearing', () => {
+    useDeeperMapsStore.setState({
+      viewMode: '3d',
+      viewBearing: 137,
+      viewPitch: 60,
+      layerBundle: bundle(DEPTH_GRID),
+    });
+    const { container } = render(<OrbitCube />);
+    const top = container.querySelector('[data-face="Top"]')!;
+    fireEvent.pointerDown(top, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(top, { pointerId: 1, clientX: 50, clientY: 50 });
+    // Tilt drops to the floor (20°); bearing is left untouched.
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(20);
+    expect(useDeeperMapsStore.getState().viewBearing).toBe(137);
   });
 });
