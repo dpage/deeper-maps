@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- The in-app help is now a proper **guide**: a slide-out panel (from the right) with a category list — Getting started, Views & the map, The 3D lake bed, Layers, Sweet spots, Inspecting spots, Fine-tuning, Your scans, About & privacy — and the selected topic's content alongside it (the categories become a scrollable tab bar on narrow screens). It documents every layer, view and control, including what each threshold does. Replaces the old single "About" dialog.
 - Fish density is now drawn as a **heatmap** instead of a fish icon per cell. On a well-scanned lake the old icons overlapped into a solid red blanket that told you nothing; the heatmap weights each spot by its fish rate and warms up only where fish actually concentrated, staying transparent elsewhere, so hotspots read at a glance.
 
 ### Fixed

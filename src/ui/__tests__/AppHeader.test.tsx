@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AppHeader } from '../AppHeader';
 
 describe('<AppHeader/>', () => {
-  it('renders the app title and the base-layer + help controls, and toggles the help dialog', async () => {
+  it('renders the app title and opens/closes the help panel', async () => {
     const user = userEvent.setup();
     render(
       <AppHeader
@@ -18,8 +18,10 @@ describe('<AppHeader/>', () => {
     const helpButton = screen.getByRole('button', { name: /help/i });
     expect(helpButton).toBeInTheDocument();
     await user.click(helpButton);
-    expect(screen.getByText(/About Deeper Maps/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /close/i }));
+    // The help panel opens with its title and category navigation.
+    expect(screen.getByRole('heading', { name: /Help & guide/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Getting started/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /close help/i }));
   });
 
   it('renders the combined view selector and reports a switch to 3D', async () => {

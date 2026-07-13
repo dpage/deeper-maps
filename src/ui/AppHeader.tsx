@@ -1,8 +1,8 @@
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import { AppBar, Box, IconButton, Stack, Toolbar, Typography } from '@mui/material';
+import { AppBar, IconButton, Stack, Toolbar, Typography } from '@mui/material';
 import { useState } from 'react';
 import type { BaseLayerId, ViewMode } from '../storage/types';
-import { HelpDialog } from './HelpDialog';
+import { HelpPanel } from './HelpPanel';
 import { ViewSelect } from './ViewSelect';
 
 export interface AppHeaderProps {
@@ -39,9 +39,7 @@ export function AppHeader({
           </Stack>
         </Toolbar>
       </AppBar>
-      <Box>
-        <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-      </Box>
+      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     </>
   );
 }
