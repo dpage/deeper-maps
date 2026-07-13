@@ -5,13 +5,19 @@ import { useDeeperMapsStore } from '../../state/store';
 import { Compass } from '../Compass';
 
 beforeEach(() => {
-  useDeeperMapsStore.setState({ viewBearing: 0, resetNorthSeq: 0 });
+  useDeeperMapsStore.setState({ viewMode: '2d', viewBearing: 0, resetNorthSeq: 0 });
 });
 
 describe('<Compass/>', () => {
-  it('renders a reset-to-north button', () => {
+  it('renders a reset-to-north button in 2D', () => {
     render(<Compass />);
     expect(screen.getByRole('button', { name: /north/i })).toBeInTheDocument();
+  });
+
+  it('renders nothing in 3D (the orbit cube takes over)', () => {
+    useDeeperMapsStore.setState({ viewMode: '3d' });
+    const { container } = render(<Compass />);
+    expect(container.firstChild).toBeNull();
   });
 
   it('rotates the needle opposite the current bearing', () => {

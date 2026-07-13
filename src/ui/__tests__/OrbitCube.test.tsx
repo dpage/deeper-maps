@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DepthGrid, LayerBundle } from '../../analysis/types';
 import { useDeeperMapsStore } from '../../state/store';
 import { closeDeeperMapsDb } from '../../storage/db';
-import { LakeBed3DControls } from '../LakeBed3DControls';
+import { OrbitCube } from '../OrbitCube';
 
 const DEPTH_GRID: DepthGrid = {
   width: 2,
@@ -43,70 +43,76 @@ beforeEach(async () => {
     removeEventListener: vi.fn(),
     terminate: vi.fn(),
   } as unknown as Worker;
-  useDeeperMapsStore.setState({ viewMode: '2d', verticalExaggeration: 6, layerBundle: null });
+  useDeeperMapsStore.setState({ viewMode: '3d', viewBearing: 0, viewPitch: 55 });
 });
 
 afterEach(async () => {
   await closeDeeperMapsDb();
 });
 
-describe('<LakeBed3DControls/>', () => {
-  it('renders nothing in 2D mode', () => {
+describe('<OrbitCube/>', () => {
+  it('renders nothing in 2D', () => {
     useDeeperMapsStore.setState({ viewMode: '2d', layerBundle: bundle(DEPTH_GRID) });
-    const { container } = render(<LakeBed3DControls />);
+    const { container } = render(<OrbitCube />);
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders nothing in 3D mode when there is no depth grid', () => {
+  it('renders nothing in 3D without a depth grid', () => {
     useDeeperMapsStore.setState({ viewMode: '3d', layerBundle: bundle(null) });
-    const { container } = render(<LakeBed3DControls />);
+    const { container } = render(<OrbitCube />);
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders nothing in 3D mode when there is no bundle at all', () => {
-    useDeeperMapsStore.setState({ viewMode: '3d', layerBundle: null });
-    const { container } = render(<LakeBed3DControls />);
-    expect(container.firstChild).toBeNull();
+  it('renders an orbit handle in 3D with data', () => {
+    useDeeperMapsStore.setState({ viewMode: '3d', layerBundle: bundle(DEPTH_GRID) });
+    render(<OrbitCube />);
+    expect(screen.getByRole('button', { name: /orbit/i })).toBeInTheDocument();
   });
 
-  it('shows the depth key, exaggeration slider and reset button in 3D with a depth grid', () => {
+  it('dragging updates bearing (horizontal) and pitch (vertical)', () => {
     useDeeperMapsStore.setState({
       viewMode: '3d',
-      verticalExaggeration: 8,
+      viewBearing: 0,
+      viewPitch: 55,
       layerBundle: bundle(DEPTH_GRID),
     });
-    render(<LakeBed3DControls />);
-    // Depth colour key (with the scan's depth range) lives in this panel now.
-    expect(screen.getByText(/^Depth$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/depth colour key/i)).toBeInTheDocument();
-    expect(screen.getByText(/Vertical exaggeration ×8/i)).toBeInTheDocument();
-    expect(screen.getByRole('slider', { name: /vertical exaggeration/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /reset view/i })).toBeInTheDocument();
-    // Tilt is handled by the orbit cube now, not a slider here.
-    expect(screen.queryByRole('slider', { name: /camera tilt/i })).toBeNull();
+    render(<OrbitCube />);
+    const cube = screen.getByRole('button', { name: /orbit/i });
+    fireEvent.pointerDown(cube, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(cube, { pointerId: 1, clientX: 120, clientY: 110 });
+    fireEvent.pointerUp(cube, { pointerId: 1, clientX: 120, clientY: 110 });
+    // dx=20, dy=10 at 0.6 deg/px → +12° bearing, +6° pitch.
+    expect(useDeeperMapsStore.getState().viewBearing).toBeCloseTo(12);
+    expect(useDeeperMapsStore.getState().viewPitch).toBeCloseTo(61);
   });
 
-  it('pushes exaggeration slider changes into the store', () => {
+  it('ignores a pointer move with no drag in progress', () => {
     useDeeperMapsStore.setState({
       viewMode: '3d',
-      verticalExaggeration: 6,
+      viewBearing: 33,
+      viewPitch: 44,
       layerBundle: bundle(DEPTH_GRID),
     });
-    render(<LakeBed3DControls />);
-    const slider = screen.getByRole('slider', { name: /vertical exaggeration/i });
-    // MUI Slider responds to keyboard arrows — a deterministic way to nudge it.
-    fireEvent.keyDown(slider, { key: 'ArrowRight' });
-    expect(useDeeperMapsStore.getState().verticalExaggeration).toBe(7);
+    render(<OrbitCube />);
+    const cube = screen.getByRole('button', { name: /orbit/i });
+    // No preceding pointerDown → the move is a no-op.
+    fireEvent.pointerMove(cube, { pointerId: 1, clientX: 200, clientY: 200 });
+    expect(useDeeperMapsStore.getState().viewBearing).toBe(33);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(44);
   });
 
-  it('Reset view bumps the reset sequence', () => {
+  it('a click (no drag) resets to the default north-facing view', () => {
     useDeeperMapsStore.setState({
       viewMode: '3d',
-      resetViewSeq: 0,
+      viewBearing: 140,
+      viewPitch: 30,
       layerBundle: bundle(DEPTH_GRID),
     });
-    render(<LakeBed3DControls />);
-    fireEvent.click(screen.getByRole('button', { name: /reset view/i }));
-    expect(useDeeperMapsStore.getState().resetViewSeq).toBe(1);
+    render(<OrbitCube />);
+    const cube = screen.getByRole('button', { name: /orbit/i });
+    fireEvent.pointerDown(cube, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(cube, { pointerId: 1, clientX: 50, clientY: 50 });
+    expect(useDeeperMapsStore.getState().viewBearing).toBe(0);
+    expect(useDeeperMapsStore.getState().viewPitch).toBe(55);
   });
 });

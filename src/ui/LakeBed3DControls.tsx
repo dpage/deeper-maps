@@ -3,9 +3,7 @@ import { Box, Button, Divider, Paper, Slider, Stack, Typography } from '@mui/mat
 import { viridisRamp } from '../map/colors';
 import {
   MAX_VERTICAL_EXAGGERATION,
-  MAX_VIEW_PITCH,
   MIN_VERTICAL_EXAGGERATION,
-  MIN_VIEW_PITCH,
   useDeeperMapsStore,
 } from '../state/store';
 
@@ -17,18 +15,15 @@ const DEPTH_GRADIENT = `linear-gradient(to right, ${viridisRamp
   .join(', ')})`;
 
 /**
- * Overlay control shown only in 3D view: vertical-exaggeration and camera-tilt
- * sliders plus a "Reset view" button. The tilt slider matters most on touch
- * devices, where two-finger tilt is undiscoverable and easy to trigger by
- * accident — the slider gives direct, predictable control. Hidden entirely in
- * 2D, or when there is no scan / no depth grid to show.
+ * Overlay control shown only in 3D view: the depth colour key, a
+ * vertical-exaggeration slider and a "Reset view" button. Camera orientation
+ * (rotate/tilt) is handled by the orbit cube, not here. Hidden entirely in 2D,
+ * or when there is no scan / no depth grid to show.
  */
 export function LakeBed3DControls(): JSX.Element | null {
   const viewMode = useDeeperMapsStore((s) => s.viewMode);
   const exaggeration = useDeeperMapsStore((s) => s.verticalExaggeration);
   const setExaggeration = useDeeperMapsStore((s) => s.setVerticalExaggeration);
-  const pitch = useDeeperMapsStore((s) => s.viewPitch);
-  const setViewPitch = useDeeperMapsStore((s) => s.setViewPitch);
   const resetView = useDeeperMapsStore((s) => s.resetView);
   const layerBundle = useDeeperMapsStore((s) => s.layerBundle);
 
@@ -78,26 +73,6 @@ export function LakeBed3DControls(): JSX.Element | null {
           />
         </Box>
 
-        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-          Tilt {Math.round(pitch)}°
-        </Typography>
-        <Box sx={{ px: 0.5 }}>
-          <Slider
-            size="small"
-            value={pitch}
-            min={MIN_VIEW_PITCH}
-            max={MAX_VIEW_PITCH}
-            step={1}
-            marks={[
-              { value: MIN_VIEW_PITCH, label: `${MIN_VIEW_PITCH}°` },
-              { value: MAX_VIEW_PITCH, label: `${MAX_VIEW_PITCH}°` },
-            ]}
-            valueLabelDisplay="auto"
-            onChange={(_e, v) => setViewPitch(sliderValue(v))}
-            aria-label="Camera tilt"
-          />
-        </Box>
-
         <Divider sx={{ my: 0.5 }} />
 
         <Button
@@ -109,7 +84,7 @@ export function LakeBed3DControls(): JSX.Element | null {
           Reset view
         </Button>
         <Typography variant="caption" color="text.secondary">
-          Drag to pan · pinch to zoom · two-finger drag (or the Tilt slider) to tilt.
+          Drag to pan · pinch to zoom · drag the cube (top-left) to orbit.
         </Typography>
       </Stack>
     </Paper>

@@ -207,6 +207,8 @@ class MockMap {
   triggerRepaint = vi.fn();
   getPitch = vi.fn(() => 0);
   getBearing = vi.fn(() => 0);
+  setPitch = vi.fn();
+  setBearing = vi.fn();
   setMinPitch = vi.fn();
   fitBounds = vi.fn(
     (bounds: [[number, number], [number, number]], options: Record<string, unknown>) => {

@@ -2,14 +2,17 @@ import { Paper, Tooltip } from '@mui/material';
 import { useDeeperMapsStore } from '../state/store';
 
 /**
- * A small compass, shown over both the 2D and 3D views, indicating the current
- * map orientation. The needle points to true north and rotates as the map is
- * rotated (bearing); clicking it eases the map back to north-up. Sits top-left
- * so it clears the 3D controls (top-right) and the legend (bottom-right).
+ * A small compass over the 2D view indicating the current map orientation. The
+ * needle points to true north and rotates as the map is rotated (bearing);
+ * clicking it eases the map back to north-up. Sits top-left, clear of the
+ * legend (bottom-right). In 3D the orbit cube takes this role and slot.
  */
-export function Compass(): JSX.Element {
+export function Compass(): JSX.Element | null {
+  const viewMode = useDeeperMapsStore((s) => s.viewMode);
   const bearing = useDeeperMapsStore((s) => s.viewBearing);
   const resetNorth = useDeeperMapsStore((s) => s.resetNorth);
+  // In 3D the orbit cube occupies this spot and conveys orientation itself.
+  if (viewMode === '3d') return null;
   const isNorth = Math.abs(((bearing % 360) + 360) % 360) < 0.5;
 
   return (

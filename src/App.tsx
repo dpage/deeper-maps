@@ -9,6 +9,7 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { Compass } from './ui/Compass';
 import { LakeBed3DControls } from './ui/LakeBed3DControls';
 import { Layout } from './ui/Layout';
+import { OrbitCube } from './ui/OrbitCube';
 import { Legend } from './ui/Legend';
 import { ProgressBanner } from './ui/ProgressBanner';
 import { ScanLibrary } from './ui/ScanLibrary';
@@ -51,6 +52,7 @@ export function App(): JSX.Element {
             <>
               <MapView />
               <Compass />
+              <OrbitCube />
               <Legend />
               <LakeBed3DControls />
               <ProgressBanner />

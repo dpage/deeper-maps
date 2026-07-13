@@ -43,6 +43,20 @@ if (typeof window !== 'undefined') {
     value: memoryLocalStorage,
   });
 
+  // jsdom does not implement PointerEvent. Subclass MouseEvent so pointer
+  // events carry clientX/clientY (the orbit cube reads them to compute drags).
+  if (typeof window.PointerEvent !== 'function') {
+    class PointerEventPolyfill extends MouseEvent {
+      pointerId: number;
+      constructor(type: string, params: PointerEventInit = {}) {
+        super(type, params);
+        this.pointerId = params.pointerId ?? 0;
+      }
+    }
+    window.PointerEvent = PointerEventPolyfill as unknown as typeof PointerEvent;
+    globalThis.PointerEvent = PointerEventPolyfill as unknown as typeof PointerEvent;
+  }
+
   // jsdom does not implement matchMedia, which MUI's useMediaQuery relies on.
   // Default every query to "no match" (desktop-width behaviour); individual
   // tests can override window.matchMedia to exercise the mobile breakpoint.

@@ -177,6 +177,12 @@ function styleFor(base: BaseLayerId): maplibregl.StyleSpecification {
   return base === 'satellite' ? SATELLITE_STYLE : OSM_STYLE;
 }
 
+// Smallest absolute angle (degrees) between two bearings, accounting for the
+// 0/360 wrap. Used to decide whether the camera bearing needs updating.
+function angularDiff(a: number, b: number): number {
+  return Math.abs(((a - b + 540) % 360) - 180);
+}
+
 type SetDataSrc = { setData: (d: GeoJSON.FeatureCollection) => void };
 
 /**
@@ -257,6 +263,7 @@ export function MapView(): JSX.Element {
   const viewMode = useDeeperMapsStore((s) => s.viewMode);
   const verticalExaggeration = useDeeperMapsStore((s) => s.verticalExaggeration);
   const viewPitch = useDeeperMapsStore((s) => s.viewPitch);
+  const viewBearing = useDeeperMapsStore((s) => s.viewBearing);
   const resetViewSeq = useDeeperMapsStore((s) => s.resetViewSeq);
   const resetNorthSeq = useDeeperMapsStore((s) => s.resetNorthSeq);
   const frameRequestSeq = useDeeperMapsStore((s) => s.frameRequestSeq);
@@ -658,16 +665,25 @@ export function MapView(): JSX.Element {
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
-  // Tilt slider → camera. Only in 3D, and only when the map isn't already at
-  // that pitch (a drag-tilt writes the store via `pitchend`, which would
-  // otherwise bounce back through here).
+  // Orbit control → camera pitch. Applied instantly (not eased) so dragging the
+  // orbit cube feels direct; the guard skips no-op writes, and the `pitchend`
+  // listener echoes drag-tilts back to the store without a feedback loop.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || viewMode !== '3d') return;
-    if (Math.abs(map.getPitch() - viewPitch) > 0.5) {
-      map.easeTo({ pitch: viewPitch, duration: 200 });
-    }
+    if (Math.abs(map.getPitch() - viewPitch) > 0.3) map.setPitch(viewPitch);
   }, [viewPitch, viewMode]);
+  /* c8 ignore stop */
+
+  /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */
+  // Orbit control → camera bearing (both view modes). Instant, like pitch;
+  // `angularDiff` handles the 0/360 wrap so a small turn near north doesn't look
+  // like a full spin.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (angularDiff(map.getBearing(), viewBearing) > 0.3) map.setBearing(viewBearing);
+  }, [viewBearing]);
   /* c8 ignore stop */
 
   /* c8 ignore start - WebGL-dependent code path; covered by Plan 3's Playwright E2E */

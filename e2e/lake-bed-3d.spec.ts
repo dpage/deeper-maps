@@ -38,10 +38,10 @@ test('switch to the 3D lake-bed view → surface renders, exaggeration tunes', a
   await page.getByRole('combobox').filter({ hasText: '2D OpenStreetMap' }).click();
   await page.getByRole('option', { name: /3D Model/i }).click();
 
-  // The 3D controls appear only when a depth grid is present and the layer is up.
+  // The 3D controls and the orbit cube appear once the surface is up.
   const slider = page.getByRole('slider', { name: /vertical exaggeration/i });
   await expect(slider).toBeVisible();
-  await expect(page.getByRole('slider', { name: /camera tilt/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /orbit view/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /reset view/i })).toBeVisible();
 
   // Give the GL layer a couple of frames to build the mesh and draw.
@@ -53,10 +53,15 @@ test('switch to the 3D lake-bed view → surface renders, exaggeration tunes', a
   await expect(page.getByText(/Vertical exaggeration ×9/i)).toBeVisible();
   await page.waitForTimeout(300);
 
-  // Tilt via the slider and reset — exercises the camera-control paths.
-  const tilt = page.getByRole('slider', { name: /camera tilt/i });
-  await tilt.focus();
-  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+  // Orbit by dragging the cube, then reset — exercises the camera-control paths.
+  const cube = page.getByRole('button', { name: /orbit view/i });
+  const cbox = await cube.boundingBox();
+  await page.mouse.move(cbox!.x + cbox!.width / 2, cbox!.y + cbox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cbox!.x + cbox!.width / 2 + 40, cbox!.y + cbox!.height / 2 + 20, {
+    steps: 5,
+  });
+  await page.mouse.up();
   await page.waitForTimeout(200);
   await page.getByRole('button', { name: /reset view/i }).click();
   await page.waitForTimeout(400);
